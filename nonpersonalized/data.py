@@ -10,7 +10,10 @@ except:
   import pickle
 import os
 import time
+import utils
 
+__author__ = "Aitor De Blas Granja"
+__email__ = "aitor.deblas@ugent.be"
 
 def load_dat(path):
     """
@@ -23,7 +26,7 @@ def load_dat(path):
         with open(path, 'r') as datfile:
             # We parse the data according to/depending on the data file read:
             if "movies" in path:
-                lmovies = []
+                lmovies = {}
                 for line in datfile:
                     movie = {}
                     # We split the line based on a delimeter
@@ -33,8 +36,21 @@ def load_dat(path):
                     movie['title'] = attributes[1]
                     movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
                     # print movie['id'], "::", movie['title'], "::", movie['genre']
-                    lmovies.append(movie)
+                    lmovies[attributes[0]] = movie
                 return lmovies
+            # if "movies" in path:
+            #     lmovies = []
+            #     for line in datfile:
+            #         movie = {}
+            #         # We split the line based on a delimeter
+            #         attributes = line.split('::')
+            #         # We assign the values to a dictionary and insert it in the list of items:
+            #         movie['id'] = attributes[0]
+            #         movie['title'] = attributes[1]
+            #         movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
+            #         # print movie['id'], "::", movie['title'], "::", movie['genre']
+            #         lmovies.append(movie)
+            #     return lmovies
             elif "ratings" in path:
                 lratings = []
                 for line in datfile:
@@ -62,16 +78,18 @@ def dump_pickle(data, path):
     :param path: file name of the pickle
     :return: nothing
     """
-    if path is "":
-        raise ValueError("[Error] A path or file name should be provided, cannot be empty")
-    elif not path.endswith(".pkl"):
-        raise ValueError("[Error] The provided path should end with: '.pkl' but got %s instead" % path)
-    # After checking some requirements of the method, now we check if a file with that name already exists:
-    if not os.path.exists(path):
-        with open(path, 'wb') as pkl_file:
-            pickle.dump(data, pkl_file, pickle.HIGHEST_PROTOCOL)
-    else:
-        raise IOError("[Error] The provided path or file name already exists. Operation aborted.")
+    # First, we check if there is some data to be pickled, otherwise it's no sense to proceed.
+    if data is not None:
+        if path is "":
+            raise ValueError("[Error] A path or file name should be provided, cannot be empty")
+        elif not path.endswith(".pkl"):
+            raise ValueError("[Error] The provided path should end with: '.pkl' but got %s instead" % path)
+        # After checking some requirements of the method, now we check if a file with that name already exists:
+        if not os.path.exists(path):
+            with open(path, 'wb') as pkl_file:
+                pickle.dump(data, pkl_file, pickle.HIGHEST_PROTOCOL)
+        else:
+            raise IOError("[Error] The provided path or file name already exists. Operation aborted.")
 
 
 def load_pickle(path_to_pickle):
@@ -99,10 +117,21 @@ def generate_file_name(name, file_ext):
     return name + "_pickle_" + time.strftime("%d-%m-%Y--%H-%M-%S", time.localtime()) + "." + file_ext
 
 def main():
-    mymovies = load_dat("movies.dat")
-    myratings = load_dat("ratings.dat")
-    dump_pickle(mymovies, generate_file_name("movies", "pkl"))
-    dump_pickle(myratings, generate_file_name("ratings", "pkl"))
+    # Load data and parse it:
+    # mymovies = load_dat("movies.dat")
+    # myratings = load_dat("ratings.dat")
+    # Dump the parsed data to pickles into the file system:
+    # dump_pickle(mymovies, generate_file_name("movies", "pkl"))
+    # dump_pickle(myratings, generate_file_name("ratings", "pkl"))
+    # Load the pickles (much faster than loading and parsing again the raw data):
+    # mymovies2 = load_pickle("movies_pickle_26-02-2018--17-55-35.pkl")
+    mymovies2= load_pickle("movies_pickle_26-02-2018--20-19-52.pkl")
+    myratings2 = load_pickle("ratings_pickle_26-02-2018--17-55-35.pkl")
+    print len(mymovies2)
+    print len(myratings2)
+    print mymovies2['3196']
+    print myratings2[0]
+    utils.plot_top10_rated_distribution(mymovies2,myratings2)
 
 if __name__ == '__main__':
     main()
