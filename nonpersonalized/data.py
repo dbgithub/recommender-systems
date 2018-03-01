@@ -4,24 +4,23 @@ dumping data to pickles, reading from pickles etc.
 """
 
 try:
-  import cPickle as pickle
+    import cPickle as pickle
 except:
-  print "Warning: Couldn't import cPickle, using native pickle instead."
-  import pickle
+    print "Warning: Couldn't import cPickle, using native pickle instead."
+    import pickle
 import os
 import time
-import utils
 
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
 
 def load_dat(path):
     """
-    Loads the data file provided by parameter
+    Loads the data file provided by parameter.
     :param path: the path to the file or just the file name
     :return: a list of dictionaries with the corresponding data type
     """
-    # First, let's read the .dat file
+    # First, let's try reading the .dat file. Then we will parse it.
     try:
         with open(path, 'r') as datfile:
             # We parse the data according to/depending on the data file read:
@@ -73,7 +72,7 @@ def load_dat(path):
 
 def dump_pickle(data, path):
     """
-    Creates a pickle with the data provided by parameter
+    Creates a pickle with the data provided by parameter and the name/path of the file.
     :param data: data object to pickle
     :param path: file name of the pickle
     :return: nothing
@@ -84,7 +83,7 @@ def dump_pickle(data, path):
             raise ValueError("[Error] A path or file name should be provided, cannot be empty")
         elif not path.endswith(".pkl"):
             raise ValueError("[Error] The provided path should end with: '.pkl' but got %s instead" % path)
-        # After checking some requirements of the method, now we check if a file with that name already exists:
+        # After checking some requirements (error checking), now we check if a file with that name already exists:
         if not os.path.exists(path):
             with open(path, 'wb') as pkl_file:
                 pickle.dump(data, pkl_file, pickle.HIGHEST_PROTOCOL)
@@ -93,11 +92,16 @@ def dump_pickle(data, path):
 
 
 def load_pickle(path_to_pickle):
+    """
+    Loads a pickle and returns it. The path of the location of the pickle is provided by parameter.
+    :param path_to_pickle: path to the pickle
+    :return:
+    """
     if path_to_pickle is "":
         raise ValueError("[Error] A path or file name should be provided, cannot be empty")
     elif not path_to_pickle.endswith(".pkl"):
         raise ValueError("[Error] The provided path should end with: '.pkl' but got %s instead" % path_to_pickle)
-    # After checking some requirements of the method, now we check if a file with that name already exists:
+    # After checking some requirements (error checking), now we check if a file with that name already exists:
     if os.path.exists(path_to_pickle):
         with open(path_to_pickle, 'rb') as pkl_file:
             return pickle.load(pkl_file)
@@ -116,7 +120,12 @@ def generate_file_name(name, file_ext):
         raise ValueError("[Error] A path or file name should be provided, cannot be empty")
     return name + "_pickle_" + time.strftime("%d-%m-%Y--%H-%M-%S", time.localtime()) + "." + file_ext
 
+
 def main():
+    """
+    This main method is for testing purposes.
+    :return:
+    """
     # Load data and parse it:
     # mymovies = load_dat("movies.dat")
     # myratings = load_dat("ratings.dat")
@@ -125,13 +134,13 @@ def main():
     # dump_pickle(myratings, generate_file_name("ratings", "pkl"))
     # Load the pickles (much faster than loading and parsing again the raw data):
     # mymovies2 = load_pickle("movies_pickle_26-02-2018--17-55-35.pkl")
-    mymovies2= load_pickle("movies_pickle_26-02-2018--20-19-52.pkl")
-    myratings2 = load_pickle("ratings_pickle_26-02-2018--17-55-35.pkl")
-    print len(mymovies2)
-    print len(myratings2)
-    print mymovies2['3196']
-    print myratings2[0]
-    utils.plot_top10_rated_distribution(mymovies2,myratings2)
+    # mymovies2= load_pickle("movies_pickle_26-02-2018--20-19-52.pkl")
+    # myratings2 = load_pickle("ratings_pickle_26-02-2018--17-55-35.pkl")
+    # print len(mymovies2)
+    # print len(myratings2)
+    # print mymovies2['3196']
+    # print myratings2[0]
+
 
 if __name__ == '__main__':
     main()
