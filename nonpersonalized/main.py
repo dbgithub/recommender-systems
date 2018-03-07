@@ -46,7 +46,7 @@ def topN_movies_advanced_association(movieX_ID):
     :return: a list of movie IDs
     """
 
-def topN_most_rated_movies():
+def topN_most_rated_movies(N=None, stars=None):
     """
     Retrieves a list of movie names and another list with their corresponding ratings which are the
     most rated movies.
@@ -80,11 +80,11 @@ def topN_most_rated_movies():
 
 def main():
     # Load data and parse it:
-    # mymovies = load_dat("movies.dat")
-    # myratings = load_dat("ratings.dat")
+    # mymovies = data.load_dat("movies.dat")
+    # myratings = data.load_dat("ratings.dat")
     # Dump the parsed data to pickles into the file system:
-    # dump_pickle(mymovies, generate_file_name("movies", "pkl"))
-    # dump_pickle(myratings, generate_file_name("ratings", "pkl"))
+    # data.dump_pickle(mymovies, generate_file_name("movies", "pkl"))
+    # data.dump_pickle(myratings, generate_file_name("ratings", "pkl"))
     # Load the pickles (much faster than loading and parsing again the raw data):
     movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)

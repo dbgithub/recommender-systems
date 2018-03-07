@@ -31,7 +31,7 @@ def plot_top10_rated_distribution(movies, ratings):
 def how_many_Z(movieID, ratings):
     """
     Computes how many instances (ratings) are done for movieID.
-    It's named: "how_many_Z" because it's valid to calculate the amount of ratings for every movie ID.
+    It's named: "how_many_Z" because it's valid to calculate the amount of ratings for every movie ID (not just X or Y).
     :param movieID: movie ID from which we want to know how many ratings were done
     :param ratings: a collection of all ratings
     :return: returns an integer.
@@ -50,3 +50,33 @@ def how_many_X_and_Y(movieX_ID, movieY, ratings):
     :param ratings: a collection of all ratings
     :return: returns an integer.
     """
+    counter = 0
+    ratings_by_user = extract_ratings_by_user(ratings)
+    for user in ratings_by_user.values():
+        if len(user) is not 0:
+            x_found = False
+            y_found = False
+            for rating in user:
+                if rating['movieid'] is movieX_ID:
+                    x_found = True
+                elif rating['movieid'] is movieY:
+                    y_found = True
+                if x_found and y_found:
+                    counter += 1
+                    break
+
+
+def extract_ratings_by_user(ratings):
+    """
+    It iterates all ratings and for each user it collects all his/her ratings in a list format.
+    It returns a dictionary with "Key=userID" and "Value=the rating object itself".
+    :param ratings: a collection of all ratings
+    :return: a dictionary with "Key=userID" and "Value=the rating object itself".
+    """
+    ratings_by_user = {}
+    for rating in ratings:
+        if rating['userid'] in ratings_by_user:
+            ratings_by_user[rating['userid']].append(rating)
+        else:
+            ratings_by_user[rating['userid']] = []
+    return ratings_by_user

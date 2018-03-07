@@ -23,9 +23,9 @@ def load_dat(path):
     # First, let's try reading the .dat file. Then we will parse it.
     try:
         with open(path, 'r') as datfile:
-            # We parse the data according to/depending on the data file read:
+            # We parse the data according to/depending on the data file read (it can be either movies or ratings):
             if "movies" in path:
-                lmovies = {}
+                lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
                 for line in datfile:
                     movie = {}
                     # We split the line based on a delimeter
@@ -51,7 +51,7 @@ def load_dat(path):
             #         lmovies.append(movie)
             #     return lmovies
             elif "ratings" in path:
-                lratings = []
+                lratings = []  # A collection of ratings with their corresponding fields.
                 for line in datfile:
                     rating = {}
                     # We split the line based on a delimeter
@@ -60,7 +60,7 @@ def load_dat(path):
                     rating['userid'] = attributes[0]
                     rating['movieid'] = attributes[1]
                     rating['rating'] = attributes[2]
-                    rating['timestamp'] = attributes[3].rstrip() # '.rstrip()' removes the trailing '\n' character
+                    rating['timestamp'] = attributes[3].rstrip()  # '.rstrip()' removes the trailing '\n' character
                     # print rating['userid'], "::", rating['movieid'], "::", rating['rating'], "::", rating['timestamp']
                     lratings.append(rating)
                 return lratings
