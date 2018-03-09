@@ -15,7 +15,7 @@ def plot_top10_rated_distribution(movies, ratings):
     """
     Plots a distribution of top10 rated movies.
     :param movies: ten most rated movies' names.
-    :param ratings: ten most rated movies' ratings
+    :param ratings: ten most rated movies' aggregated ratings
     :return:
     """
     print movies
@@ -52,18 +52,21 @@ def how_many_X_and_Y(movieX_ID, movieY, ratings):
     """
     counter = 0
     ratings_by_user = extract_ratings_by_user(ratings)
+    movieX_ID = str(movieX_ID) #TODO: it depends on the final implementation of the Recommender System, this might not be necessary anymore
+    movieY = str(movieY) #TODO: it depends on the final implementation of the Recommender System, this might not be necessary anymore
     for user in ratings_by_user.values():
         if len(user) is not 0:
             x_found = False
             y_found = False
             for rating in user:
-                if rating['movieid'] is movieX_ID:
+                if rating['movieid'] == movieX_ID:
                     x_found = True
-                elif rating['movieid'] is movieY:
+                elif rating['movieid'] == movieY:
                     y_found = True
                 if x_found and y_found:
                     counter += 1
                     break
+    return counter
 
 
 def extract_ratings_by_user(ratings):

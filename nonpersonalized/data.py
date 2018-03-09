@@ -1,5 +1,5 @@
 """
-This module is in charge of, among other things: loading the data, creating pickles,
+This module is in charge, among other things, of: loading the data, creating pickles,
 dumping data to pickles, reading from pickles etc.
 """
 
@@ -18,12 +18,12 @@ def load_dat(path):
     """
     Loads the data file provided by parameter.
     :param path: the path to the file or just the file name
-    :return: a list of dictionaries with the corresponding data type
+    :return: a list of dictionaries or a dictionary with the corresponding data type
     """
     # First, let's try reading the .dat file. Then we will parse it.
     try:
         with open(path, 'r') as datfile:
-            # We parse the data according to/depending on the data file read (it can be either movies or ratings):
+            # We parse the data according to/depending on the data file read (it can either be movies or ratings):
             if "movies" in path:
                 lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
                 for line in datfile:
@@ -126,6 +126,7 @@ def main():
     This main method is for testing purposes.
     :return:
     """
+    pass
     # Load data and parse it:
     # mymovies = load_dat("movies.dat")
     # myratings = load_dat("ratings.dat")

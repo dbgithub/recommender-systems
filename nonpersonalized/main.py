@@ -21,6 +21,11 @@ def calculate_simple_association(movieX, movieY):
     :param movieY: ID of movie Y
     :return: the value computed by the simple association
     """
+    # First get the data (preferibly from pickles):
+    movies = data.load_pickle(MOVIE_PICKLE_LOCATION)
+    ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)
+    value = float(utils.how_many_X_and_Y(movieX,movieY,ratings))/utils.how_many_Z(movieX,ratings)
+    return value
 
 def calculate_advanced_association(movieX, movieY):
     """
@@ -46,20 +51,24 @@ def topN_movies_advanced_association(movieX_ID):
     :return: a list of movie IDs
     """
 
-def topN_most_rated_movies(N=None, stars=None):
+def topN_most_rated_movies(N=10, stars=None):
     """
     Retrieves a list of movie names and another list with their corresponding ratings which are the
     most rated movies.
+    :param N: number of movies to put in the returned list
+    :param stars: number of stars (integer) for which movies will be extracted for the topN
     :return: a list of (most rated) movie names AND a list of their ratings as well. Ordered from BIG to SMALL.
     """
     aggregated_ratings = {}
-    top10_movies = []
-    top10_ratings = []
+    topN_movies = []
+    topN_ratings = []
     # First, let's load the data:
     movies = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)
     # Now, we will iterate over all ratings and we will aggregate/count all ratings for every movie:
     for elem in ratings:
+        if stars is not None and elem['rating'] is not str(stars):
+            continue
         if not elem['movieid'] in aggregated_ratings:
             aggregated_ratings[elem['movieid']] = 1
         else:
@@ -67,16 +76,17 @@ def topN_most_rated_movies(N=None, stars=None):
     # print "Num elements (aggregated dictionary): ", len(aggregated_ratings)
     # 'sorted' function sorts the dictionary from small to big, returns a list:
     mysorted = sorted(aggregated_ratings.items(), key=operator.itemgetter(1))
-    # We take the last 10 elements from the tail:
-    mysorted = mysorted[-10:]
+    # We take the last N elements from the tail:
+    mysorted = mysorted[-N:]
     # We reverse the order of the items within the list. Now the first item in the list is the most rated movie ID.
     mysorted.reverse()
     # print mysorted
     # Instead of returning movie IDs, we will return movie NAMES:
     for elem in mysorted:
-        top10_movies.append(movies[elem[0]]['title'])
-        top10_ratings.append(elem[1])
-    return top10_movies, top10_ratings
+        topN_movies.append(movies[elem[0]]['title'])
+        topN_ratings.append(elem[1])
+    return topN_movies, topN_ratings
+
 
 def main():
     # Load data and parse it:
@@ -88,14 +98,35 @@ def main():
     # Load the pickles (much faster than loading and parsing again the raw data):
     movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
-    print len(movies_pkl)
-    print len(ratings_pkl)
-    print movies_pkl['3196']
-    print ratings_pkl[0]
+
+
+def test():
+    """
+    This function is used as a test-bed.
+    Just for TESTING purposes. It shouldn't be used for production code.
+    :return:
+    """
+    # Load data and parse it:
+    # mymovies = data.load_dat("movies.dat")
+    # myratings = data.load_dat("ratings.dat")
+    # Dump the parsed data to pickles into the file system:
+    # data.dump_pickle(mymovies, generate_file_name("movies", "pkl"))
+    # data.dump_pickle(myratings, generate_file_name("ratings", "pkl"))
+    # Load the pickles (much faster than loading and parsing again the raw data):
+    movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
+    ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
+    print "len(movies_pkl): ", len(movies_pkl)
+    print "len(ratings_pkl): ", len(ratings_pkl)
+    # print movies_pkl['3196']
+    # print ratings_pkl[0]
     # Show top10 rated movies:
-    top10_movies, top10_ratings = topN_most_rated_movies()
-    utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
+    # top10_movies, top10_ratings = topN_most_rated_movies(10)
+    # utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
+    # How many instances rated X and Y at the same time:
+    result = utils.how_many_X_and_Y(1, 2858, ratings_pkl)
+    print result, "times were movie '1' and movie '2858' rated by users"
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    test()
