@@ -37,8 +37,9 @@ def how_many_Z(movieID, ratings):
     :return: returns an integer.
     """
     counter = 0
+    movieID = str(movieID) #TODO: it depends on the final implementation of the Recommender System, this might not be necessary anymore
     for rating in ratings:
-        if rating['movieid'] is movieID:
+        if rating['movieid'] == movieID:
             counter += 1
     return counter
 
