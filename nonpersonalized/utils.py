@@ -82,3 +82,13 @@ def extract_ratings_by_user(ratings):
         else:
             ratings_by_user[rating['userid']] = []
     return ratings_by_user
+
+
+def get_title_genre(movieid, movies):
+    """
+    Returns the title and genre of the movie ID passed as parameter
+    :param movieid: ID of the movie to get the title and genre from
+    :param movies: collection of all movies
+    :return: returns title and genre
+    """
+    return movies[str(movieid)]['title'], movies[str(movieid)]['genre']

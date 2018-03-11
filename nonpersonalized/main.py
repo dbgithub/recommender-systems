@@ -1,5 +1,5 @@
 """
-This module is the main module. The non-personalized recommender system starts here.
+This file is the main file. The non-personalized recommender system starts here.
 
 """
 
@@ -57,11 +57,12 @@ def calculate_advanced_association(movieX, movieY, ratings=None):
         value = (float(XY)/X)/(float(notXY)/notX)
         return value
     except ZeroDivisionError, err:
-        print "[ERROR] ", err
-        print "X = ", X
-        print "XY = ", XY
-        print "notXY = ", notXY
-        print "notX = ", notX
+        pass
+        # print "[ERROR] ", err
+        # print "X = ", X
+        # print "XY = ", XY
+        # print "notXY = ", notXY
+        # print "notX = ", notX
         return 0.0
 
 def topN_movies_simple_association(movieX_ID, N=10):
@@ -70,7 +71,7 @@ def topN_movies_simple_association(movieX_ID, N=10):
     In case of a tie, the movie with the higher ID is ranked before the movie with lower ID.
     :param movieX_ID: ID of movie X
     :param N: number of movies to put in the returned list (topN)
-    :return: a list of movie IDs
+    :return: a list of tuples with movie ID, association value and title
     """
     # First get the data (preferably from pickles):
     movies = data.load_pickle(MOVIE_PICKLE_LOCATION)
@@ -91,7 +92,7 @@ def topN_movies_simple_association(movieX_ID, N=10):
         sa_values.append((int(movieY_ID), calculate_simple_association(movieX_ID, movieY_ID, ratings)))
         print "(i=", i, ")Appended movie: ", movieY_ID
     mysorted = sorted(sa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
-    mysorted = mysorted[:N]  # we are interested just in the top N tuples
+    mysorted = mysorted[1:N+1]  # we are interested just in the top N tuples, except the query movie itself
     topN = []
     for elem in mysorted:
         topN.append((elem[0], elem[1], movies[str(elem[0])]['title']))
@@ -104,7 +105,7 @@ def topN_movies_advanced_association(movieX_ID, N=10):
     In case of a tie, the movie with the higher ID is ranked before the movie with lower ID.
     :param movieX_ID: ID of movie X
     :param N: number of movies to put in the returned list (topN)
-    :return: a list of movie IDs
+    :return: a list of tuples with movie ID, association value and title
     """
     # First get the data (preferably from pickles):
     movies = data.load_pickle(MOVIE_PICKLE_LOCATION)  # Ratings data-set is not needed in this case.
@@ -125,7 +126,7 @@ def topN_movies_advanced_association(movieX_ID, N=10):
         aa_values.append((int(movieY_ID), calculate_advanced_association(movieX_ID, movieY_ID, ratings)))
         print "(i=", i, ")Appended movie: ", movieY_ID
     mysorted = sorted(aa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
-    mysorted = mysorted[:N]  # we are interested just in the top N tuples
+    mysorted = mysorted[1:N + 1]  # we are interested just in the top N tuples, except the query movie itself
     topN = []
     for elem in mysorted:
         topN.append((elem[0], elem[1], movies[str(elem[0])]['title']))
@@ -159,11 +160,13 @@ def topN_most_rated_movies(N=10, stars=None):
     mysorted = sorted(aggregated_ratings.items(), key=operator.itemgetter(1), reverse=True)
     # We take the first N elements (Top N):
     mysorted = mysorted[:N]
-    # Instead of returning movie IDs, we will return movie NAMES:
+    # We collect the movie IDs:
+    topN_movieIDs = [elem[0] for elem in mysorted]
+    # We are also interested in movie NAMES:
     for elem in mysorted:
         topN_movies.append(movies[elem[0]]['title'])
         topN_ratings.append(elem[1])
-    return topN_movies, topN_ratings
+    return topN_movies, topN_ratings, topN_movieIDs
 
 
 def main():
@@ -176,6 +179,41 @@ def main():
     # Load the pickles (much faster than loading and parsing again the raw data):
     movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
+
+    # Question 1:
+    print "Question 1: simple product association 1 and 1064 = ", calculate_simple_association(1, 1064)
+    # Question 2:
+    print "Question 2: advanced product association 1 and 1064 = ", calculate_advanced_association(1, 1064)
+    # Question 4:
+    print "Question 4: simple product association 1 and 2858 =", calculate_simple_association(1, 2858)
+    # Question 5:
+    print "Question 5: title and genre (1, 1064, 2858)."
+    for id in [1, 1064, 2858]:
+        title, genre = utils.get_title_genre(id, movies_pkl)
+        print "\t-",id,"=",title, "::",genre
+    # Question 7:
+    print "Question 7: advanced product association 1 and 2858 = ", calculate_advanced_association(1, 2858)
+    # Question 9:
+    print "Question 9: top 10 most rated movies; provide ID, number of users who rated and title."
+    top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10)
+    for i in range(len(top10_movies)):
+        print "\tID:", top10_movieids[i], ":: Amount:", top10_ratings[i], ":: Title:", top10_movies[i]
+    # Question 10:
+    print "Question 10: top 5 movies with highest simple association with movie 3941; provide ID, value and title."
+    # topn = topN_movies_simple_association(3941, 5)
+    # for item in topn:
+    #     print "\t", item
+    # Question 11:
+    print "Question 11: top 5 movies with highest advanced association with movie 3941; provide ID, value and title."
+    topn = topN_movies_advanced_association(3941, 5)
+    for item in topn:
+        print "\t", item
+    # Question 14:
+    print "Question 14: top 10 most rated movies with at least 4 stars; provide ID, number of users who rated and title."
+    top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10, 4)
+    for i in range(len(top10_movies)):
+        print "\tID:", top10_movieids[i], ":: Amount:", top10_ratings[i], ":: Title:", top10_movies[i]
+
 
 
 def test():
@@ -199,20 +237,20 @@ def test():
     # print ratings_pkl[0]
 
     # Plot top10 rated movies with/without stars:
-    # top10_movies, top10_ratings = topN_most_rated_movies(10)
-    # utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
+    top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10,4)
+    utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
 
     # Get top10 rated movies with/without stars:
-    # top10_movies, top10_ratings = topN_most_rated_movies(10, 4)
+    # top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10, 4)
     # for movietitle in top10_movies:
     #     print movietitle
 
     # How many instances rated X and Y at the same time:
-    # result = utils.how_many_X_and_Y(1, 2858, ratings_pkl)
-    # print result, "times were movie '1' and movie '2858' rated by users"
+    # result2 = utils.how_many_X_and_Y(1, 1064, ratings_pkl)
+    # print result2, "times were movie '1' and movie '1064' rated by users"
 
     # How many times was movie X ranked:
-    # result = utils.how_many_Z(3941, ratings_pkl)
+    # result = utils.how_many_Z(1, ratings_pkl)
     # print "How many times was movie X rated? = ", result
 
     # Calculate simple association value example:

@@ -1,5 +1,5 @@
 """
-This module is in charge, among other things, of: loading the data, creating pickles,
+This file is in charge, among other things, of: loading the data, creating pickles,
 dumping data to pickles, reading from pickles etc.
 """
 
