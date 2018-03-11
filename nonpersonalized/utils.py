@@ -23,7 +23,9 @@ def plot_top10_rated_distribution(movies, ratings):
     print ratings
     plt.rcParams.update({'figure.autolayout': True})
     plt.figure(figsize=(10, 4))
-    plt.barh(movies, ratings)
+    plt.barh(range(len(movies)), ratings)
+    plt.yticks(range(len(movies)), movies)
+    plt.gca().invert_yaxis()
     plt.ylabel("Movies")
     plt.xlabel("Amount of ratings")
     plt.show()
@@ -63,17 +65,6 @@ def how_many_X_and_Y(movieX_ID, movieY, ratings):
             movieids = [rating['movieid'] for rating in user]
             if movieX_ID in movieids and movieY in movieids:
                 counter += 1
-            # Another way of implementing it:
-            # x_found = False
-            # y_found = False
-            # for rating in user:
-            #     if rating['movieid'] == movieX_ID:
-            #         x_found = True
-            #     elif rating['movieid'] == movieY:
-            #         y_found = True
-            #     if x_found and y_found:
-            #         counter += 1
-            #         break
     return counter
 
 

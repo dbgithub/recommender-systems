@@ -148,7 +148,7 @@ def topN_most_rated_movies(N=10, stars=None):
     ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)
     # Now, we will iterate over all ratings and we will aggregate/count all ratings for every movie:
     for elem in ratings:
-        if stars is not None and elem['rating'] is not str(stars):
+        if stars is not None and int(elem['rating']) >= stars:
             continue
         if not elem['movieid'] in aggregated_ratings:
             aggregated_ratings[elem['movieid']] = 1
@@ -156,12 +156,9 @@ def topN_most_rated_movies(N=10, stars=None):
             aggregated_ratings[elem['movieid']] += 1
     # print "Num elements (aggregated dictionary): ", len(aggregated_ratings)
     # 'sorted' function sorts the dictionary from SMALL to BIG, returns a list:
-    mysorted = sorted(aggregated_ratings.items(), key=operator.itemgetter(1))
-    # We take the last N elements from the tail:
-    mysorted = mysorted[-N:]
-    # We reverse the order of the items within the list. Now the first item in the list is the most rated movie ID.
-    mysorted.reverse()
-    # print mysorted
+    mysorted = sorted(aggregated_ratings.items(), key=operator.itemgetter(1), reverse=True)
+    # We take the first N elements (Top N):
+    mysorted = mysorted[:N]
     # Instead of returning movie IDs, we will return movie NAMES:
     for elem in mysorted:
         topN_movies.append(movies[elem[0]]['title'])
@@ -201,9 +198,14 @@ def test():
     # print movies_pkl['3196']
     # print ratings_pkl[0]
 
-    # Show top10 rated movies:
+    # Plot top10 rated movies with/without stars:
     # top10_movies, top10_ratings = topN_most_rated_movies(10)
     # utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
+
+    # Get top10 rated movies with/without stars:
+    # top10_movies, top10_ratings = topN_most_rated_movies(10, 4)
+    # for movietitle in top10_movies:
+    #     print movietitle
 
     # How many instances rated X and Y at the same time:
     # result = utils.how_many_X_and_Y(1, 2858, ratings_pkl)
@@ -228,10 +230,10 @@ def test():
     #     print item
 
     # Retrieve topN movies with highest advanced association value w.r.t ID 3941:
-    print "topN movies with highest advanced association value w.r.t ID 3941"
-    topn = topN_movies_advanced_association(3941)
-    for item in topn:
-        print item
+    # print "topN movies with highest advanced association value w.r.t ID 3941"
+    # topn = topN_movies_advanced_association(3941)
+    # for item in topn:
+    #     print item
 
 
 if __name__ == '__main__':
