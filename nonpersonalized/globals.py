@@ -1,0 +1,2 @@
+AMOUNT_RATED_X = None
+RATINGS_BY_USER = None

@@ -37,19 +37,6 @@ def load_dat(path):
                     # print movie['id'], "::", movie['title'], "::", movie['genre']
                     lmovies[attributes[0]] = movie
                 return lmovies
-            # if "movies" in path:
-            #     lmovies = []
-            #     for line in datfile:
-            #         movie = {}
-            #         # We split the line based on a delimeter
-            #         attributes = line.split('::')
-            #         # We assign the values to a dictionary and insert it in the list of items:
-            #         movie['id'] = attributes[0]
-            #         movie['title'] = attributes[1]
-            #         movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
-            #         # print movie['id'], "::", movie['title'], "::", movie['genre']
-            #         lmovies.append(movie)
-            #     return lmovies
             elif "ratings" in path:
                 lratings = []  # A collection of ratings with their corresponding fields.
                 for line in datfile:

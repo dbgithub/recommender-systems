@@ -9,39 +9,60 @@ __email__ = "aitor.deblas@ugent.be"
 import data
 import utils
 import operator  # used to sort the (key,value) pairs of a dictionary
+import globals  # a file to store global variables to use them across all Python files
 
 MOVIE_PICKLE_LOCATION = "movies_pickle_26-02-2018--20-19-52.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_26-02-2018--17-55-35.pkl"
 
 
-def calculate_simple_association(movieX, movieY):
+def calculate_simple_association(movieX, movieY, ratings=None):
     """
     Calculates the simple association value for movieX with respect movieY.
     :param movieX: ID of movie X
     :param movieY: ID of movie Y
+    :param ratings: collection of all ratings. If available at calling time, then it can be used, otherwise it will be
+    locally retrieved.
     :return: the value computed by the simple association
     """
-    # First get the data (preferably from pickles):
-    ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)  # Movies data-set not needed, just ratings.
-    value = float(utils.how_many_X_and_Y(movieX, movieY, ratings))/utils.how_many_Z(movieX, ratings)
+    # First get the data (preferably by parameter otherwise from pickles):
+    if ratings is None:
+        ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)  # Movies data-set not needed, just ratings.
+    XY = float(utils.how_many_X_and_Y(movieX, movieY, ratings))
+    X = globals.AMOUNT_RATED_X
+    if X is None:
+        X = utils.how_many_Z(movieX, ratings)
+    value = XY/X
     return value
 
-def calculate_advanced_association(movieX, movieY):
+def calculate_advanced_association(movieX, movieY, ratings=None):
     """
     Calculates the advanced association value for movieX with respect movieY.
     :param movieX: ID of movie X
     :param movieY: ID of movie Y
+    :param ratings: collection of all ratings. If available at calling time, then it can be used, otherwise it will be
+    locally retrieved.
     :return: the value computed by the advanced association
     """
-    # First get the data (preferably from pickles):
-    ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)  # Movies data-set is not needed in this case.
-    X = utils.how_many_Z(movieX, ratings)
+    # First get the data (preferably by parameter otherwise from pickles):
+    if ratings is None:
+        ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)  # Movies data-set not needed, just ratings.
+    X = globals.AMOUNT_RATED_X
+    if X is None:
+        X = utils.how_many_Z(movieX, ratings)
     Y = utils.how_many_Z(movieY, ratings)
     XY = utils.how_many_X_and_Y(movieX, movieY, ratings)
     notX = len(ratings) - X
     notXY = Y - XY
-    value = (float(XY)/X)/(float(notXY)/notX)
-    return value
+    try:
+        value = (float(XY)/X)/(float(notXY)/notX)
+        return value
+    except ZeroDivisionError, err:
+        print "[ERROR] ", err
+        print "X = ", X
+        print "XY = ", XY
+        print "notXY = ", notXY
+        print "notX = ", notX
+        return 0.0
 
 def topN_movies_simple_association(movieX_ID, N=10):
     """
@@ -52,18 +73,28 @@ def topN_movies_simple_association(movieX_ID, N=10):
     :return: a list of movie IDs
     """
     # First get the data (preferably from pickles):
-    movies = data.load_pickle(MOVIE_PICKLE_LOCATION)  # Ratings data-set is not needed in this case.
+    movies = data.load_pickle(MOVIE_PICKLE_LOCATION)
+    ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)
+    # To SPEED UP the execution of the algorithm and avoid repetitive jobs/tasks, we will obtain/retrieve now:
+    # - How many times movie X was rated
+    # - A collection of all ratings indexed by user
+    # Normally you would obtain this info in another more appropriate (inner) methods, but since we are now iterating
+    # over all movies, there are some variables or data that is common to every iteration, thus we obtain it outside the
+    # loop. These are global variables that can be consulted from other modules or Python files.
+    globals.AMOUNT_RATED_X = utils.how_many_Z(movieX_ID, ratings)
+    globals.RATINGS_BY_USER = utils.extract_ratings_by_user(ratings)
+
     # Now, we will iterate over all movies to calculate their respective simple association value given the movieX ID.
     sa_values = []  # A list of tuples with the following form: "(movieID, association value)"
 
-    for movie in movies.values():
-        sa_values.append((int(movie['id']), calculate_simple_association(movieX_ID, movie['id'])))
-        # print "Appended movie: ", movie['id']
-    mysorted = sorted(sa_values, key=operator.itemgetter(0, 1), reverse=True)
-    mysorted = mysorted[:N]
+    for i, movieY_ID in enumerate(movies.keys()):  # movies.keys()[:100]
+        sa_values.append((int(movieY_ID), calculate_simple_association(movieX_ID, movieY_ID, ratings)))
+        print "(i=", i, ")Appended movie: ", movieY_ID
+    mysorted = sorted(sa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
+    mysorted = mysorted[:N]  # we are interested just in the top N tuples
     topN = []
     for elem in mysorted:
-        topN.append((elem[0], elem[1], movies[elem[0]]['title']))
+        topN.append((elem[0], elem[1], movies[str(elem[0])]['title']))
     return topN
 
 
@@ -77,16 +108,27 @@ def topN_movies_advanced_association(movieX_ID, N=10):
     """
     # First get the data (preferably from pickles):
     movies = data.load_pickle(MOVIE_PICKLE_LOCATION)  # Ratings data-set is not needed in this case.
+    ratings = data.load_pickle(RATINGS_PICKLE_LOCATION)
+    # To SPEED UP the execution of the algorithm and avoid repetitive jobs/tasks, we will obtain/retrieve now:
+    # - How many times movie X was rated
+    # - A collection of all ratings indexed by user
+    # Normally you would obtain this info in another more appropriate (inner) methods, but since we are now iterating
+    # over all movies, there are some variables or data that is common to every iteration, thus we obtain it outside the
+    # loop. These are global variables that can be consulted from other modules or Python files.
+    globals.AMOUNT_RATED_X = utils.how_many_Z(movieX_ID, ratings)
+    globals.RATINGS_BY_USER = utils.extract_ratings_by_user(ratings)
+
     # Now, we will iterate over all movies to calculate their respective simple association value given the movieX ID.
     aa_values = []  # A list of tuples with the following form: "(movieID, association value)"
 
-    for movie in movies.values():
-        aa_values.append((int(movie['id']), calculate_advanced_association(movieX_ID, movie['id'])))
-    mysorted = sorted(aa_values, key=operator.itemgetter(0, 1), reverse=True)
-    mysorted = mysorted[:N]
+    for i, movieY_ID in enumerate(movies.keys()):  # movies.keys()[:100]
+        aa_values.append((int(movieY_ID), calculate_advanced_association(movieX_ID, movieY_ID, ratings)))
+        print "(i=", i, ")Appended movie: ", movieY_ID
+    mysorted = sorted(aa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
+    mysorted = mysorted[:N]  # we are interested just in the top N tuples
     topN = []
     for elem in mysorted:
-        topN.append((elem[0], elem[1], movies[elem[0]]['title']))
+        topN.append((elem[0], elem[1], movies[str(elem[0])]['title']))
     return topN
 
 
@@ -113,7 +155,7 @@ def topN_most_rated_movies(N=10, stars=None):
         else:
             aggregated_ratings[elem['movieid']] += 1
     # print "Num elements (aggregated dictionary): ", len(aggregated_ratings)
-    # 'sorted' function sorts the dictionary from small to big, returns a list:
+    # 'sorted' function sorts the dictionary from SMALL to BIG, returns a list:
     mysorted = sorted(aggregated_ratings.items(), key=operator.itemgetter(1))
     # We take the last N elements from the tail:
     mysorted = mysorted[-N:]
@@ -180,12 +222,16 @@ def test():
     # print "Advanced association value of movie 1 w.r.t to movie 1064: ", value
 
     # Retrieve topN movies with highest simple association value w.r.t ID 3941:
-    print "topN movies with highest simple association value w.r.t ID 3941:"
-    topN_movies_simple_association(3941)
+    # print "topN movies with highest simple association value w.r.t ID 3941:"
+    # topn = topN_movies_simple_association(3941)
+    # for item in topn:
+    #     print item
 
     # Retrieve topN movies with highest advanced association value w.r.t ID 3941:
-    # print "topN movies with highest advanced association value w.r.t ID 3941"
-    # topN_movies_advanced_association(3941)
+    print "topN movies with highest advanced association value w.r.t ID 3941"
+    topn = topN_movies_advanced_association(3941)
+    for item in topn:
+        print item
 
 
 if __name__ == '__main__':

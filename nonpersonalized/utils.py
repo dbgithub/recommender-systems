@@ -6,6 +6,7 @@ For instance, plotting charts, declaration of subroutines used in main, etc.
 """
 
 import matplotlib.pyplot as plt
+import globals  # a file to store global variables to use them across all Python files
 
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
@@ -52,21 +53,27 @@ def how_many_X_and_Y(movieX_ID, movieY, ratings):
     :return: returns an integer.
     """
     counter = 0
-    ratings_by_user = extract_ratings_by_user(ratings)
+    ratings_by_user = globals.RATINGS_BY_USER
+    if ratings_by_user is None:
+        ratings_by_user = extract_ratings_by_user(ratings)
     movieX_ID = str(movieX_ID) #TODO: it depends on the final implementation of the Recommender System, this might not be necessary anymore
     movieY = str(movieY) #TODO: it depends on the final implementation of the Recommender System, this might not be necessary anymore
     for user in ratings_by_user.values():
         if len(user) is not 0:
-            x_found = False
-            y_found = False
-            for rating in user:
-                if rating['movieid'] == movieX_ID:
-                    x_found = True
-                elif rating['movieid'] == movieY:
-                    y_found = True
-                if x_found and y_found:
-                    counter += 1
-                    break
+            movieids = [rating['movieid'] for rating in user]
+            if movieX_ID in movieids and movieY in movieids:
+                counter += 1
+            # Another way of implementing it:
+            # x_found = False
+            # y_found = False
+            # for rating in user:
+            #     if rating['movieid'] == movieX_ID:
+            #         x_found = True
+            #     elif rating['movieid'] == movieY:
+            #         y_found = True
+            #     if x_found and y_found:
+            #         counter += 1
+            #         break
     return counter
 
 
