@@ -90,7 +90,7 @@ def topN_movies_simple_association(movieX_ID, N=10):
 
     for i, movieY_ID in enumerate(movies.keys()):  # movies.keys()[:100]
         sa_values.append((int(movieY_ID), calculate_simple_association(movieX_ID, movieY_ID, ratings)))
-        print "(i=", i, ")Appended movie: ", movieY_ID
+        # print "(i=", i, ")Appended movie: ", movieY_ID
     mysorted = sorted(sa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
     mysorted = mysorted[1:N+1]  # we are interested just in the top N tuples, except the query movie itself
     topN = []
@@ -124,7 +124,7 @@ def topN_movies_advanced_association(movieX_ID, N=10):
 
     for i, movieY_ID in enumerate(movies.keys()):  # movies.keys()[:100]
         aa_values.append((int(movieY_ID), calculate_advanced_association(movieX_ID, movieY_ID, ratings)))
-        print "(i=", i, ")Appended movie: ", movieY_ID
+        # print "(i=", i, ")Appended movie: ", movieY_ID
     mysorted = sorted(aa_values, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL association value
     mysorted = mysorted[1:N + 1]  # we are interested just in the top N tuples, except the query movie itself
     topN = []
