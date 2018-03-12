@@ -106,29 +106,3 @@ def generate_file_name(name, file_ext):
     if name is "":
         raise ValueError("[Error] A path or file name should be provided, cannot be empty")
     return name + "_pickle_" + time.strftime("%d-%m-%Y--%H-%M-%S", time.localtime()) + "." + file_ext
-
-
-def main():
-    """
-    This main method is for testing purposes.
-    :return:
-    """
-    pass
-    # Load data and parse it:
-    # mymovies = load_dat("movies.dat")
-    # myratings = load_dat("ratings.dat")
-    # Dump the parsed data to pickles into the file system:
-    # dump_pickle(mymovies, generate_file_name("movies", "pkl"))
-    # dump_pickle(myratings, generate_file_name("ratings", "pkl"))
-    # Load the pickles (much faster than loading and parsing again the raw data):
-    # mymovies2 = load_pickle("movies_pickle_26-02-2018--17-55-35.pkl")
-    # mymovies2= load_pickle("movies_pickle_26-02-2018--20-19-52.pkl")
-    # myratings2 = load_pickle("ratings_pickle_26-02-2018--17-55-35.pkl")
-    # print len(mymovies2)
-    # print len(myratings2)
-    # print mymovies2['3196']
-    # print myratings2[0]
-
-
-if __name__ == '__main__':
-    main()

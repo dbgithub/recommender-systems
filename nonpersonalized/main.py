@@ -197,12 +197,12 @@ def main():
     print "Question 9: top 10 most rated movies; provide ID, number of users who rated and title."
     top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10)
     for i in range(len(top10_movies)):
-        print "\tID:", top10_movieids[i], ":: Amount:", top10_ratings[i], ":: Title:", top10_movies[i]
+        print "\tID:", top10_movieids[i], ":: Num. users:", top10_ratings[i], ":: Title:", top10_movies[i]
     # Question 10:
     print "Question 10: top 5 movies with highest simple association with movie 3941; provide ID, value and title."
-    # topn = topN_movies_simple_association(3941, 5)
-    # for item in topn:
-    #     print "\t", item
+    topn = topN_movies_simple_association(3941, 5)
+    for item in topn:
+        print "\t", item
     # Question 11:
     print "Question 11: top 5 movies with highest advanced association with movie 3941; provide ID, value and title."
     topn = topN_movies_advanced_association(3941, 5)
@@ -212,8 +212,7 @@ def main():
     print "Question 14: top 10 most rated movies with at least 4 stars; provide ID, number of users who rated and title."
     top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10, 4)
     for i in range(len(top10_movies)):
-        print "\tID:", top10_movieids[i], ":: Amount:", top10_ratings[i], ":: Title:", top10_movies[i]
-
+        print "\tID:", top10_movieids[i], ":: Num. users:", top10_ratings[i], ":: Title:", top10_movies[i]
 
 
 def test():
@@ -237,7 +236,7 @@ def test():
     # print ratings_pkl[0]
 
     # Plot top10 rated movies with/without stars:
-    top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10,4)
+    top10_movies, top10_ratings, top10_movieids = topN_most_rated_movies(10)
     utils.plot_top10_rated_distribution(top10_movies, top10_ratings)
 
     # Get top10 rated movies with/without stars:
@@ -275,5 +274,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
