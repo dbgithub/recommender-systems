@@ -1,0 +1,6 @@
+{
+  "uri": "https://api.sugestio.com/sites/sandbox/users/1/recommendations.json",
+  "method": "GET",
+  "body": "",
+  "headers": {}
+}

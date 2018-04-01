@@ -10,6 +10,7 @@ except:
     import pickle
 import os
 import time
+import csv
 
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
@@ -22,35 +23,43 @@ def load_dat(path):
     """
     # First, let's try reading the .dat file. Then we will parse it.
     try:
-        with open(path, 'r') as datfile:
+        with open(path, 'r') as csvfile:
+            csvreader = csv.reader(csvfile)  # creation of a CSV reader
+            fields = []
+            for i, row in enumerate(csvreader):
+                print "i=",i," -> ", row
+                if "127164" in row:
+                    fields = row
+            for elem in fields:
+                print elem
             # We parse the data according to/depending on the data file read (it can either be movies or ratings):
-            if "movies" in path:
-                lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
-                for line in datfile:
-                    movie = {}
-                    # We split the line based on a delimeter
-                    attributes = line.split('::')
-                    # We assign the values to a dictionary and insert it in the list of items:
-                    movie['id'] = attributes[0]
-                    movie['title'] = attributes[1]
-                    movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
-                    # print movie['id'], "::", movie['title'], "::", movie['genre']
-                    lmovies[attributes[0]] = movie
-                return lmovies
-            elif "ratings" in path:
-                lratings = []  # A collection of ratings with their corresponding fields.
-                for line in datfile:
-                    rating = {}
-                    # We split the line based on a delimeter
-                    attributes = line.split('::')
-                    # We assign the values to a dictionary and insert it in the list of items:
-                    rating['userid'] = attributes[0]
-                    rating['movieid'] = attributes[1]
-                    rating['rating'] = attributes[2]
-                    rating['timestamp'] = attributes[3].rstrip()  # '.rstrip()' removes the trailing '\n' character
-                    # print rating['userid'], "::", rating['movieid'], "::", rating['rating'], "::", rating['timestamp']
-                    lratings.append(rating)
-                return lratings
+            # if "movies" in path:
+            #     lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
+            #     for line in csvfile:
+            #         movie = {}
+            #         # We split the line based on a delimeter
+            #         attributes = line.split('::')
+            #         # We assign the values to a dictionary and insert it in the list of items:
+            #         movie['id'] = attributes[0]
+            #         movie['title'] = attributes[1]
+            #         movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
+            #         # print movie['id'], "::", movie['title'], "::", movie['genre']
+            #         lmovies[attributes[0]] = movie
+            #     return lmovies
+            # elif "ratings" in path:
+            #     lratings = []  # A collection of ratings with their corresponding fields.
+            #     for line in csvfile:
+            #         rating = {}
+            #         # We split the line based on a delimeter
+            #         attributes = line.split('::')
+            #         # We assign the values to a dictionary and insert it in the list of items:
+            #         rating['userid'] = attributes[0]
+            #         rating['movieid'] = attributes[1]
+            #         rating['rating'] = attributes[2]
+            #         rating['timestamp'] = attributes[3].rstrip()  # '.rstrip()' removes the trailing '\n' character
+            #         # print rating['userid'], "::", rating['movieid'], "::", rating['rating'], "::", rating['timestamp']
+            #         lratings.append(rating)
+            #     return lratings
     except IOError, err:
         print "[Error] Error while accessing the file (", path, "): ", err
     except Exception, err:
