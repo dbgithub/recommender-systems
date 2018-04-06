@@ -8,21 +8,12 @@ For instance, statistics methods, subroutines for main methods in main, etc.
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
 
+import sugestio
 
-def plot_top10_rated_distribution(movies, ratings):
+
+def delete_all_consumptions_user(userID):
     """
-    Plots a distribution of top10 rated movies.
-    :param movies: ten most rated movies' names.
-    :param ratings: ten most rated movies' aggregated ratings
+    Deletes all consumptions made by user identified by userID.
+    :param userID: int number of the user identifier
     :return:
     """
-    print movies
-    print ratings
-    plt.rcParams.update({'figure.autolayout': True})
-    plt.figure(figsize=(10, 4))
-    plt.barh(range(len(movies)), ratings)
-    plt.yticks(range(len(movies)), movies)
-    plt.gca().invert_yaxis()
-    plt.ylabel("Movies")
-    plt.xlabel("Amount of ratings")
-    plt.show()

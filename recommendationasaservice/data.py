@@ -21,45 +21,35 @@ def load_dat(path):
     :param path: the path to the file or just the file name
     :return: a list of dictionaries or a dictionary with the corresponding data type
     """
-    # First, let's try reading the .dat file. Then we will parse it.
+    # First, let's read the .csv file. Then we will parse it.
     try:
         with open(path, 'r') as csvfile:
             csvreader = csv.reader(csvfile)  # creation of a CSV reader
-            fields = []
-            for i, row in enumerate(csvreader):
-                print "i=",i," -> ", row
-                if "127164" in row:
-                    fields = row
-            for elem in fields:
-                print elem
+            csvreader.next()  # We skip the header
             # We parse the data according to/depending on the data file read (it can either be movies or ratings):
-            # if "movies" in path:
-            #     lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
-            #     for line in csvfile:
-            #         movie = {}
-            #         # We split the line based on a delimeter
-            #         attributes = line.split('::')
-            #         # We assign the values to a dictionary and insert it in the list of items:
-            #         movie['id'] = attributes[0]
-            #         movie['title'] = attributes[1]
-            #         movie['genre'] = attributes[2].rstrip() # '.rstrip()' removes the trailing '\n' character
-            #         # print movie['id'], "::", movie['title'], "::", movie['genre']
-            #         lmovies[attributes[0]] = movie
-            #     return lmovies
-            # elif "ratings" in path:
-            #     lratings = []  # A collection of ratings with their corresponding fields.
-            #     for line in csvfile:
-            #         rating = {}
-            #         # We split the line based on a delimeter
-            #         attributes = line.split('::')
-            #         # We assign the values to a dictionary and insert it in the list of items:
-            #         rating['userid'] = attributes[0]
-            #         rating['movieid'] = attributes[1]
-            #         rating['rating'] = attributes[2]
-            #         rating['timestamp'] = attributes[3].rstrip()  # '.rstrip()' removes the trailing '\n' character
-            #         # print rating['userid'], "::", rating['movieid'], "::", rating['rating'], "::", rating['timestamp']
-            #         lratings.append(rating)
-            #     return lratings
+            if "movies" in path:
+                lmovies = {}  # A dictionary indexed by movie ID containing the movie object itself.
+                for line in csvreader:
+                    movie = {}
+                    # We assign the values to a dictionary and insert it in the list of items:
+                    movie['id'] = int(line[0])
+                    movie['title'] = line[1]
+                    movie['genre'] = line[2]
+                    # print movie['id'], "::", movie['title'], "::", movie['genre']
+                    lmovies[line[0]] = movie
+                return lmovies
+            elif "ratings" in path:
+                lratings = []  # A collection of ratings with their corresponding fields.
+                for line in csvreader:
+                    rating = {}
+                    # We assign the values to a dictionary and insert it in the list of items:
+                    rating['userid'] = int(line[0])
+                    rating['movieid'] = int(line[1])
+                    rating['rating'] = float(line[2])
+                    rating['timestamp'] = int(line[3])
+                    # print rating['userid'], "::", rating['movieid'], "::", rating['rating'], "::", rating['timestamp']
+                    lratings.append(rating)
+                return lratings
     except IOError, err:
         print "[Error] Error while accessing the file (", path, "): ", err
     except Exception, err:
@@ -70,7 +60,7 @@ def dump_pickle(data, path):
     """
     Creates a pickle with the data provided by parameter and the name/path of the file.
     :param data: data object to pickle
-    :param path: file name of the pickle
+    :param path: file name of the pickle, it should end with '.pkl'
     :return: nothing
     """
     # First, we check if there is some data to be pickled, otherwise it's no sense to proceed.
@@ -90,7 +80,7 @@ def dump_pickle(data, path):
 def load_pickle(path_to_pickle):
     """
     Loads a pickle and returns it. The path of the location of the pickle is provided by parameter.
-    :param path_to_pickle: path to the pickle
+    :param path_to_pickle: path to the pickle, it should end with '.pkl'
     :return:
     """
     if path_to_pickle is "":
