@@ -36,9 +36,9 @@ def submit_metadata_single_movie(movieID, metadata):
     genres = metadata['genre'].split('|')
     for genre in genres:
         item.category.append(genre)
-    status = SUGESTIOCLIENT.add_item(item)
-    if status == 200:
-        print "[200]: Movie metadata submitted successfully!"
+    status, raw = SUGESTIOCLIENT.add_item(item)
+    if status == 200 or status == 202:
+        print "[",status,"]: Movie metadata submitted successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status
@@ -56,9 +56,9 @@ def submit_rating_single_movie(movieID, rating):
     con.type = "RATING"
     con.detail = "STAR:5:1:" + str(int(rating['rating']))
     con.date = rating['timestamp']
-    status = SUGESTIOCLIENT.add_consumption(con)
-    if status == 200:
-        print "[200]: Rating for single movie submitted successfully!"
+    status, raw = SUGESTIOCLIENT.add_consumption(con)
+    if status == 200 or status == 202:
+        print "[",status,"]: Rating for single movie submitted/updated successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status
@@ -89,16 +89,16 @@ def topN_recommendations_user(userID, N = None):
     # Check if N is none, raise an error if yes.
     try:
         if N is None:
-            raise "Parameter value missing"
-        if N is not isinstance(N, int):
-            raise "Not int"
-    except "Parameter value missing":
+            raise AttributeError
+        if not isinstance(N, int):
+            raise ValueError
+    except AttributeError:
         print "[Error] Parameter value missing. N is none"
-    except "Not int":
+    except ValueError:
         print "[Error] N is not an int, it should be an int number"
     status, recommendations = SUGESTIOCLIENT.get_recommendations(userID, limit=N)
-    if status == 200:
-        print "[200]: top N recommendations retrieved successfully!"
+    if status == 200 or status == 202:
+        print "[",status,"]: top N recommendations retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, recommendations
@@ -112,11 +112,12 @@ def rating_history_user(userID):
     :return: int status and a list of consumptions
     """
     status, consumptions = SUGESTIOCLIENT.get_user_consumptions(userID)
-    if status == 200:
-        print "[200]: user history retrieved successfully!"
+    if status == 200 or status == 202:
+        print "[",status,"]: user history retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, consumptions
+
 
 def get_metadata_movie(movieID):
     """
@@ -125,11 +126,12 @@ def get_metadata_movie(movieID):
     :return: metadata object
     """
     status, movie = SUGESTIOCLIENT.get_item(movieID)
-    if status == 200:
-        print "[200]: movie retrieved successfully!"
+    if status == 200 or status == 202:
+        print "[",status,"]: movie retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, movie
+
 
 def read_movie_metadata_and_ratings():
     """
@@ -137,6 +139,7 @@ def read_movie_metadata_and_ratings():
     Reads movie metadata and ratings from Movielens data-set.
     :return: movie metadata, ratings
     """
+
 
 def submit_movies_metadata_bulk(movies):
     """
@@ -153,6 +156,7 @@ def submit_movies_metadata_bulk(movies):
             item.category.append(genre)
     items.append(item)
     SUGESTIOCLIENT.add_items(items)
+
 
 def submit_movies_ratings_bulk(ratings):
     """
@@ -203,9 +207,30 @@ def test():
     #     print("server response code:", status)
 
     # Testing own implemented methods:
+    # Dummy rating:
+    dummyrating = {'userid': 671, 'movieid': 8, 'rating':4.0, 'timestamp': 1260759182}
+    dummyrating2 = {'userid': 1, 'movieid': 9, 'rating':2.0, 'timestamp': 1260759182}  # dummy rating changed
+    dummyratings = []
+    dummyratings.append(dummyrating)
+    dummyratings.append(dummyrating2)
+    # Dummy movies:
+    dummymovie1 = {'id': 10, 'title': 'invented movie', 'genre': 'horror|comedy'}
+    dummymovie2 = {'id': 5, 'title': 'yet another invented movie', 'genre': 'adventure|drama'}
+    dummymovies = []
+    dummymovies.append(dummymovie1)
+    dummymovies.append(dummymovie2)
+    # Data:
     movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
+    # Testing methods:
     submit_metadata_single_movie(4, movies_pkl['4'])
+    submit_rating_single_movie(8, dummyrating)
+    update_rating_single_movie(8, dummyrating2)
+    topN_recommendations_user(1, N=5)
+    rating_history_user(1)
+    get_metadata_movie(2)
+    submit_movies_metadata_bulk(dummymovies)
+    submit_movies_ratings_bulk(dummyratings)
 
 
 if __name__ == '__main__':
