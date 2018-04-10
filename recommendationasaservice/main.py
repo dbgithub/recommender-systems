@@ -15,7 +15,7 @@ ACCOUNT = 'sandbox'
 SECRET = 'demo'
 # ACCOUNT = 's2018debla'
 # SECRET = 'Dzkux4G9k1AZzVCA'
-MOVIE_PICKLE_LOCATION = "movies_pickle_05-04-2018--20-02-35.pkl"
+MOVIE_PICKLE_LOCATION = "movies_pickle_10-04-2018--18-59-27.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_05-04-2018--20-02-35.pkl"
 
 # Declare Sugestio client (using already existing Sugestio library for python):
@@ -34,6 +34,7 @@ def submit_metadata_single_movie(movieID, metadata):
     item = Item(movieID)
     item.title = metadata['title']
     genres = metadata['genre'].split('|')
+
     for genre in genres:
         item.category.append(genre)
     status, raw = SUGESTIOCLIENT.add_item(item)
@@ -54,7 +55,7 @@ def submit_rating_single_movie(movieID, rating):
     """
     con = Consumption(rating['userid'], movieID)
     con.type = "RATING"
-    con.detail = "STAR:5:1:" + str(int(rating['rating']))
+    con.detail = "STAR:5:0.5:" + str(float(rating['rating']))
     con.date = rating['timestamp']
     status, raw = SUGESTIOCLIENT.add_consumption(con)
     if status == 200 or status == 202:
@@ -133,14 +134,6 @@ def get_metadata_movie(movieID):
     return status, movie
 
 
-def read_movie_metadata_and_ratings():
-    """
-    TODO: this method is a candidate to be deleted!
-    Reads movie metadata and ratings from Movielens data-set.
-    :return: movie metadata, ratings
-    """
-
-
 def submit_movies_metadata_bulk(movies):
     """
     Submits in bulk-fashion all movies passed by parameter.
@@ -154,7 +147,7 @@ def submit_movies_metadata_bulk(movies):
         genres = movie['genre'].split('|')
         for genre in genres:
             item.category.append(genre)
-    items.append(item)
+        items.append(item)
     SUGESTIOCLIENT.add_items(items)
 
 
@@ -168,7 +161,7 @@ def submit_movies_ratings_bulk(ratings):
     for rating in ratings:
         con = Consumption(rating['userid'], rating['movieid'])
         con.type = "RATING"
-        con.detail = "STAR:5:1:" + str(int(rating['rating']))
+        con.detail = "STAR:5:0.5:" + str(float(rating['rating']))
         con.date = rating['timestamp']
         consumptions.append(con)
     SUGESTIOCLIENT.add_consumptions(consumptions)
@@ -187,6 +180,8 @@ def main():
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
     print "len(movies_pkl): ", len(movies_pkl)
     print "len(ratings_pkl): ", len(ratings_pkl)
+    print movies_pkl['136592']
+
 
 
 def test():
@@ -196,7 +191,10 @@ def test():
     :return:
     """
     print "HelloWorldTEST!"
+
+    # -------------------------------
     # Testing library against Sugestio API:
+
     # client = sugestio.Client(ACCOUNT, SECRET)
     # status, content = client.get_recommendations(1, 5)
     # if status == 200:
@@ -206,31 +204,26 @@ def test():
     # else:
     #     print("server response code:", status)
 
+    # -------------------------------
     # Testing own implemented methods:
-    # Dummy rating:
-    dummyrating = {'userid': 671, 'movieid': 8, 'rating':4.0, 'timestamp': 1260759182}
-    dummyrating2 = {'userid': 1, 'movieid': 9, 'rating':2.0, 'timestamp': 1260759182}  # dummy rating changed
-    dummyratings = []
-    dummyratings.append(dummyrating)
-    dummyratings.append(dummyrating2)
-    # Dummy movies:
-    dummymovie1 = {'id': 10, 'title': 'invented movie', 'genre': 'horror|comedy'}
-    dummymovie2 = {'id': 5, 'title': 'yet another invented movie', 'genre': 'adventure|drama'}
-    dummymovies = []
-    dummymovies.append(dummymovie1)
-    dummymovies.append(dummymovie2)
+
     # Data:
     movies_pkl = data.load_pickle(MOVIE_PICKLE_LOCATION)
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
     # Testing methods:
-    submit_metadata_single_movie(4, movies_pkl['4'])
-    submit_rating_single_movie(8, dummyrating)
-    update_rating_single_movie(8, dummyrating2)
-    topN_recommendations_user(1, N=5)
-    rating_history_user(1)
-    get_metadata_movie(2)
-    submit_movies_metadata_bulk(dummymovies)
-    submit_movies_ratings_bulk(dummyratings)
+    submit_metadata_single_movie(83829, movies_pkl['83829'])
+    submit_rating_single_movie(8, ratings_pkl[3500])
+    update_rating_single_movie(8, ratings_pkl[200])
+    s, recommendations = topN_recommendations_user(1, N=5)
+    for i, rec in enumerate(recommendations):
+        print "\t\t Recommendation#",i,": ", rec
+    s, consumptions = rating_history_user(1)
+    for i, con in enumerate(consumptions):
+        print "\t\t Consumptions#",i,": ", con
+    s, mov = get_metadata_movie(2)
+    print "Movie details: ", mov
+    submit_movies_metadata_bulk(movies_pkl.values())
+    submit_movies_ratings_bulk(ratings_pkl)
 
 
 if __name__ == '__main__':

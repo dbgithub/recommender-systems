@@ -34,7 +34,10 @@ def load_dat(path):
                     # We assign the values to a dictionary and insert it in the list of items:
                     movie['id'] = int(line[0])
                     movie['title'] = line[1]
-                    movie['genre'] = line[2]
+                    if line[2] == "(no genres listed)":  # here is where we handle the case of "no genres listed"
+                        movie['genre'] = ""
+                    else:
+                        movie['genre'] = line[2]
                     # print movie['id'], "::", movie['title'], "::", movie['genre']
                     lmovies[line[0]] = movie
                 return lmovies
