@@ -11,12 +11,13 @@ from sugestio import Consumption, Item, User
 import data
 import utils
 
-ACCOUNT = 'sandbox'
-SECRET = 'demo'
-# ACCOUNT = 's2018debla'
-# SECRET = 'Dzkux4G9k1AZzVCA'
+# ACCOUNT = 'sandbox'
+# SECRET = 'demo'
+ACCOUNT = 's2018debla'
+SECRET = 'Dzkux4G9k1AZzVCA'
 MOVIE_PICKLE_LOCATION = "movies_pickle_10-04-2018--18-59-27.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_05-04-2018--20-02-35.pkl"
+LOG_STATUS = False
 
 # Declare Sugestio client (using already existing Sugestio library for python):
 # Info: https://github.com/sugestio/sugestio-python
@@ -34,12 +35,12 @@ def submit_metadata_single_movie(movieID, metadata):
     item = Item(movieID)
     item.title = metadata['title']
     genres = metadata['genre'].split('|')
-
     for genre in genres:
         item.category.append(genre)
     status, raw = SUGESTIOCLIENT.add_item(item)
     if status == 200 or status == 202:
-        print "[",status,"]: Movie metadata submitted successfully!"
+        if LOG_STATUS is True:
+            print "[",status,"]: Movie metadata submitted successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status
@@ -59,7 +60,8 @@ def submit_rating_single_movie(movieID, rating):
     con.date = rating['timestamp']
     status, raw = SUGESTIOCLIENT.add_consumption(con)
     if status == 200 or status == 202:
-        print "[",status,"]: Rating for single movie submitted/updated successfully!"
+        if LOG_STATUS is True:
+            print "[",status,"]: Rating for single movie submitted/updated successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status
@@ -99,7 +101,8 @@ def topN_recommendations_user(userID, N = None):
         print "[Error] N is not an int, it should be an int number"
     status, recommendations = SUGESTIOCLIENT.get_recommendations(userID, limit=N)
     if status == 200 or status == 202:
-        print "[",status,"]: top N recommendations retrieved successfully!"
+        if LOG_STATUS is True:
+            print "[",status,"]: top N recommendations retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, recommendations
@@ -114,7 +117,8 @@ def rating_history_user(userID):
     """
     status, consumptions = SUGESTIOCLIENT.get_user_consumptions(userID)
     if status == 200 or status == 202:
-        print "[",status,"]: user history retrieved successfully!"
+        if LOG_STATUS is True:
+            print "[",status,"]: user history retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, consumptions
@@ -124,11 +128,12 @@ def get_metadata_movie(movieID):
     """
     Retrieves the metadata related to a movie which was previously submitted.
     :param movieID: int number of the movie identifier
-    :return: metadata object
+    :return: metadata of the movie. It returns a single item containing tuples accessed as attributes of an object
     """
     status, movie = SUGESTIOCLIENT.get_item(movieID)
     if status == 200 or status == 202:
-        print "[",status,"]: movie retrieved successfully!"
+        if LOG_STATUS is True:
+            print "[",status,"]: movie retrieved successfully!"
     else:
         print "[",str(status),"]: Something went wrong."
     return status, movie
@@ -168,7 +173,6 @@ def submit_movies_ratings_bulk(ratings):
 
 
 def main():
-    print "HelloWorld! (MAIN)"
     # Load data and parse it:
     # mymovies = data.load_dat("movies.csv")
     # myratings = data.load_dat("ratings.csv")
@@ -180,8 +184,32 @@ def main():
     ratings_pkl = data.load_pickle(RATINGS_PICKLE_LOCATION)
     print "len(movies_pkl): ", len(movies_pkl)
     print "len(ratings_pkl): ", len(ratings_pkl)
-    print movies_pkl['136592']
+    # submit_movies_metadata_bulk(movies_pkl.values())
+    # submit_movies_ratings_bulk(ratings_pkl)
 
+    # Question 1:
+    print "Question 1: rating of movie 1125 by user 289."
+    s, rating = utils.get_rating(289, 1125)
+    print "\t\t| rating =", utils.decode_stars(rating[0].detail)
+    print "\t\t| date & time =", rating[0].date
+    s, metadata = get_metadata_movie(1125)
+    print "\t\t| title =", metadata.title
+    print "\t\t| genre(s) =",
+    for genre in metadata.category:
+        print genre,
+    print ""  # this print is just for readability
+    # Question 3:
+    print "\nQuestion 3: rating history user 249."
+    s, history = rating_history_user(249)
+    for rating in history:
+        s, metadata = get_metadata_movie(rating.itemid)
+        genres = ""
+        for genre in metadata.category:
+            if genres is "":
+                genres = "{0}".format(genre)
+            else:
+                genres = "{0}, {1}".format(genres, genre)
+        print "\t\t| Movie id =", rating.itemid, " :: Title =", metadata.title, " :: Genre(s) =", genres, " :: Rating =", utils.decode_stars(rating.detail)
 
 
 def test():
@@ -227,5 +255,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
