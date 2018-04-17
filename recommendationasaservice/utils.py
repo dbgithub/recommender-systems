@@ -17,6 +17,12 @@ def delete_all_consumptions_user(userID):
     :param userID: int number of the user identifier
     :return:
     """
+    s, response = SUGESTIOCLIENT.delete_user_consumptions(userID)
+    if s == 200 or s == 202:
+        if LOG_STATUS is True:
+            print "[",s,"]: All consumptions of user ",userID," were deleted successfully!"
+    else:
+        print "[",str(s),"]: Something went wrong."
 
 
 def get_rating(userID, movieID):

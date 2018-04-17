@@ -8,6 +8,7 @@ __email__ = "aitor.deblas@ugent.be"
 
 import sugestio
 from sugestio import Consumption, Item, User
+from numpy import mean, median, unique
 import data
 import utils
 
@@ -17,7 +18,7 @@ ACCOUNT = 's2018debla'
 SECRET = 'Dzkux4G9k1AZzVCA'
 MOVIE_PICKLE_LOCATION = "movies_pickle_10-04-2018--18-59-27.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_05-04-2018--20-02-35.pkl"
-LOG_STATUS = False
+LOG_STATUS = True
 
 # Declare Sugestio client (using already existing Sugestio library for python):
 # Info: https://github.com/sugestio/sugestio-python
@@ -187,29 +188,164 @@ def main():
     # submit_movies_metadata_bulk(movies_pkl.values())
     # submit_movies_ratings_bulk(ratings_pkl)
 
-    # Question 1:
+    # # Question 1:
     print "Question 1: rating of movie 1125 by user 289."
-    s, rating = utils.get_rating(289, 1125)
-    print "\t\t| rating =", utils.decode_stars(rating[0].detail)
-    print "\t\t| date & time =", rating[0].date
-    s, metadata = get_metadata_movie(1125)
-    print "\t\t| title =", metadata.title
-    print "\t\t| genre(s) =",
-    for genre in metadata.category:
-        print genre,
-    print ""  # this print is just for readability
-    # Question 3:
+    # s, rating = utils.get_rating(289, 1125)
+    # print "\t\t| rating =", utils.decode_stars(rating[0].detail)
+    # print "\t\t| date & time =", rating[0].date
+    # s, metadata = get_metadata_movie(1125)
+    # print "\t\t| title =", metadata.title
+    # print "\t\t| genre(s) =",
+    # for genre in metadata.category:
+    #     print genre,
+    # print ""  # this print is just for readability
+    # # Question 3:
     print "\nQuestion 3: rating history user 249."
-    s, history = rating_history_user(249)
-    for rating in history:
-        s, metadata = get_metadata_movie(rating.itemid)
-        genres = ""
-        for genre in metadata.category:
-            if genres is "":
-                genres = "{0}".format(genre)
-            else:
-                genres = "{0}, {1}".format(genres, genre)
-        print "\t\t| Movie id =", rating.itemid, " :: Title =", metadata.title, " :: Genre(s) =", genres, " :: Rating =", utils.decode_stars(rating.detail)
+    # s, history = rating_history_user(249)
+    # rating_stars = []
+    # for rating in history:
+    #     s, metadata = get_metadata_movie(rating.itemid)
+    #     genres = ""
+    #     for genre in metadata.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rating.itemid, ":: Title =", metadata.title, ":: Genre(s) =", genres, ":: Rating =", utils.decode_stars(rating.detail)
+    #     rating_stars.append(utils.decode_stars(rating.detail))
+    # print "\t\t| Mean =", mean(rating_stars)
+    # print "\t\t| Median =", median(rating_stars)
+    # print "\t\t| Uniqueness =", dict(zip(*unique(rating_stars, return_counts=True)))
+    # # Question 4:
+    print "\nQuestion 4: top five collaborative filtering recommendations user 249."
+    # s, top5 = topN_recommendations_user(249, 5)
+    # for rec in top5:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # # Question 5:
+    print "\nQuestion 5: rating history user 35."
+    # s, history = rating_history_user(35)
+    # rating_stars = []
+    # for rating in history:
+    #     s, metadata = get_metadata_movie(rating.itemid)
+    #     genres = ""
+    #     for genre in metadata.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rating.itemid, ":: Title =", metadata.title, ":: Genre(s) =", genres, ":: Rating =", utils.decode_stars(rating.detail)
+    #     rating_stars.append(utils.decode_stars(rating.detail))
+    # print "\t\t| Mean =", mean(rating_stars)
+    # print "\t\t| Median =", median(rating_stars)
+    # print "\t\t| Uniqueness =", dict(zip(*unique(rating_stars, return_counts=True)))
+    # # Question 6:
+    print "\nQuestion 6: top five collaborative filtering recommendations user 35."
+    # s, top5 = topN_recommendations_user(35, 5)
+    # for rec in top5:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # # Question 8:
+    print "\nQuestion 8: top five content based recommendations user 249."
+    # s, top5 = topN_recommendations_user(249, 5)
+    # for rec in top5:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # # Question 9:
+    print "\nQuestion 9: top five content based recommendations user 35."
+    # s, top5 = topN_recommendations_user(35, 5)
+    # for rec in top5:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # Question 10a:
+    print "\nQuestion 10a: additional raitings for new user 1000."
+    # additional_ratings = [
+    #     {'userid': 1000, 'movieid': 1590, 'rating': 4.0, 'timestamp': 1476640644},
+    #     {'userid': 1000, 'movieid': 1196, 'rating': 4.5, 'timestamp': 1476640644},
+    #     {'userid': 1000, 'movieid': 4878, 'rating': 4.0, 'timestamp': 1476640644},
+    #     {'userid': 1000, 'movieid': 589, 'rating': 4.5, 'timestamp': 1476640644},
+    #     {'userid': 1000, 'movieid': 480, 'rating': 4.5, 'timestamp': 1476640644}
+    # ]
+    # submit_movies_ratings_bulk(additional_ratings) # Make sure to execute this once and at the correct moment
+    # Question 10b:
+    print "\nQuestion 10b: rating history user 1000."
+    # s, history = rating_history_user(1000)
+    # for rating in history:
+    #     s, metadata = get_metadata_movie(rating.itemid)
+    #     genres = ""
+    #     for genre in metadata.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rating.itemid, ":: Title =", metadata.title, ":: Genre(s) =", genres, ":: Rating =", utils.decode_stars(rating.detail)
+    # Question 12:
+    print "\nQuestion 12: top 10 collaborative filtering recommendations user 1000."
+    # s, top10 = topN_recommendations_user(1000, 10)
+    # for rec in top10:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # Question 14:
+    print "\nQuestion 14: top 10 content based recommendations user 1000."
+    # s, top10 = topN_recommendations_user(1000, 10)
+    # for rec in top10:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # Question 15:
+    print "\nQuestion 15: additional rating by user 1000."
+    # s = submit_rating_single_movie(6587, {'userid': 1000, 'movieid': 6587, 'rating': 1.0, 'timestamp': 1476640644})
+    # s, metadata = get_metadata_movie(6587)
+    # genres = ""
+    # for genre in metadata.category:
+    #     if genres is "":
+    #         genres = "{0}".format(genre)
+    #     else:
+    #         genres = "{0}, {1}".format(genres, genre)
+    # print "\t\t| Movie title =", metadata.title, ":: Genre(s) =", genres
+    # Question 17:
+    print "\nQuestion 17: top 10 content based recommendations user 1000."
+    # s, top10 = topN_recommendations_user(1000, 10)
+    # for rec in top10:
+    #     genres = ""
+    #     for genre in rec.item.category:
+    #         if genres is "":
+    #             genres = "{0}".format(genre)
+    #         else:
+    #             genres = "{0}, {1}".format(genres, genre)
+    #     print "\t\t| Movie id =", rec.item.id, ":: Title =", rec.item.title, ":: Genre(s) =", genres, ":: Score =", rec.score
+    # Question 18:
+    print "\nQuestion 18: delete all consumptions user 1000."
+    # utils.delete_all_consumptions_user(1000)
 
 
 def test():
