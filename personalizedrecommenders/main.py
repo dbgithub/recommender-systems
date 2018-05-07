@@ -6,23 +6,29 @@ This file is the main file. Main methods for personalized recommender system can
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
 
-from numpy import mean, median, unique
+from numpy import mean
 import data
 import utils
 
-MOVIE_PICKLE_LOCATION = "movies_pickle_10-04-2018--18-59-27.pkl"
-RATINGS_PICKLE_LOCATION = "ratings_pickle_05-04-2018--20-02-35.pkl"
+MOVIE_PICKLE_LOCATION = "movies_pickle_06-05-2018--23-43-45.pkl"
+RATINGS_PICKLE_LOCATION = "ratings_pickle_06-05-2018--23-43-45.pkl"
 LOG_STATUS = True
+RATINGS = None
 
 def calculate_pearson_correlation(common_ratings, userAid, userUid):
     """
     Calculates Pearson correlation.
-    :param common_ratings: a list of common ratings rated by either user A and user U
+    :param common_ratings: a dictionary with "Key=userID" and "Value=list of rating objects"
     :param userAid: int number of the id of user A
     :param userUid: int number of the id of user B
     :return: float number, weight of Pearson correlation
     """
-    pass
+    mean_ratings_A = calculate_mean_ratings(userAid)
+    mean_ratings_U = calculate_mean_ratings(userUid)
+    # numerator =
+    # denominator =
+    # sum((m - r + 1) * (n - r + 1) for r in zip(common_ratings[userAid],common_ratings[userUid]))
+    # return float(numerator)/float(denominator)
 
 def calculate_mean_ratings(userID):
     """
@@ -30,15 +36,16 @@ def calculate_mean_ratings(userID):
     :param userID: int number of the id of the user
     :return: float number, average of the ratings
     """
+    return mean(utils.extract_ratings_by_user(userID))
 
-def calculate_centered_mean_rating_user(itemID, userID, avgRatingUser):
+def calculate_user_mean_centered_rating(ratings_user, avgRatingUser):
     """
-    Calculates the centered mean rating of user 'userID' over ALL his ratings
-    :param itemID: int number of the item
-    :param userID: int number of the user
+    Calculates the centered mean rating of a certain user over a subset of his ratings
+    :param ratings_user: some ratings of the user. Ratings over which we want to calculate user mean centered rating.
     :param avgRatingUser: mean ratings of the user
     :return: float number
     """
+    return (sum(pow(rating-avgRatingUser, 2)) for rating in ratings_user)
 
 def calculate_significance_weighing(userAid, userUid):
     """
@@ -82,7 +89,7 @@ def compute_cosine_similarity(itemID_i,itemID_j):
     :return: float number
     """
 
-def calculate_centered_mean_rating_item(itemID, userID, avgRatingItem):
+def calculate_item_mean_centered_rating(itemID, userID, avgRatingItem):
     """
     Calculates centered mean rating of the item 'itemID' for all users.
     :param itemID: int number of the item
