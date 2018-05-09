@@ -8,5 +8,5 @@ such as: reading pickles, calculating a value which is the same for every iterat
 __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
 
-LOG_STATUS = True  # bool to indicate whether we want verbose output or not
+LOG_STATUS = False  # bool to indicate whether we want verbose output or not
 RATINGS_BY_USER = None  # dictionary with "Key=userID" and "Value=list of ratings by user". A dictionary that hols the ratings by all users
