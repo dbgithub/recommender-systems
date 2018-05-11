@@ -9,6 +9,7 @@ __author__ = "Aitor De Blas Granja"
 __email__ = "aitor.deblas@ugent.be"
 
 import globals  # a file to store global variables to use them across all Python files
+from main import calculate_mean_ratings_for_item
 
 
 def find_common_ratings(userAid, userUid, ratings):
@@ -80,4 +81,71 @@ def extract_ratings_by_users(ratings):
             ratings_by_user[rating['userid']].append(rating)
         else:
             ratings_by_user[rating['userid']] = []
+            ratings_by_user[rating['userid']].append(rating)
     return ratings_by_user
+
+
+def extract_ratings_by_users_map(ratings):
+    """
+    It iterates over all ratings and for each user it collects all his/her ratings in a dictionary.
+    It returns a dictionary with "Key=userID" and "Value=a Dictionary with 'Key=itemID' and 'Value=rating (stars)'".
+    :param ratings: a collection of all ratings
+    :return: a dictionary with "Key=userID" and "Value=a Dictionary with 'Key=itemID' and 'Value=rating (stars)'".
+    """
+    if globals.RATINGS_BY_USER is None:
+        globals.RATINGS_BY_USER = extract_ratings_by_users(ratings)
+    ratings_by_user_map = {}
+    for key in globals.RATINGS_BY_USER.keys():
+        ratings_user = globals.RATINGS_BY_USER[key]
+        if len(ratings_user) != 0:  # this means the user has rated some items
+            ratings_by_user_map[key] = {}
+            for rating in ratings_user:
+                ratings_by_user_map[key][rating['movieid']] = rating['rating']
+    return ratings_by_user_map
+
+
+def extract_ratings_x_by_users(movies, ratings):
+    """
+    For each item ID it collects all the ratings done by the users who rated that item.
+    :param movies: list of ALL movies
+    :param ratings: list of ALL ratings
+    :return: a dictionary with "Key=itemID" and "Value=list of ratings for that item by all user who rated it"
+    """
+    # Firstly, we collect all the item IDs of all movies to iterate over them later on:
+    itemIDs = [int(movie['id']) for movie in movies.values()]
+    ratings_x_by_users = {}
+
+    for itemid in itemIDs:
+        ratings_x_by_users[itemid] = []
+        if globals.LOG_STATUS is True:
+            print "ITEM ID: ", itemid
+        for rating in ratings:
+            if rating['movieid'] == itemid:
+                # Put it into the dictionary
+                ratings_x_by_users[itemid].append(rating)
+                if globals.LOG_STATUS is True:
+                    print "\t| rating: ", rating
+    return ratings_x_by_users
+
+
+def extract_mean_ratings(movies):
+    """
+    It calculates the mean of the ratings of all users who rated this item
+    :param movies: list of ALL movies
+    :return: a dictionary with "Key=itemID" and "Value=average of the ratings of all users who rated this item"
+    """
+    if globals.RATINGS_X_BY_USERS is None:
+        raise ValueError("[Error] RATINGS_X_BY_USERS is none! Cannot continue with the method!")
+
+    # Firstly, we collect all the item IDs of all movies to iterate over them later on:
+    itemIDs = [int(movie['id']) for movie in movies.values()]
+    mean_ratings = {}
+
+    for itemid in itemIDs:
+        try:
+            mean = calculate_mean_ratings_for_item(itemid, globals.RATINGS_X_BY_USERS[itemid], None)  # compute the mean
+        except KeyError:
+            continue
+        # Put it into the dictionary
+        mean_ratings[itemid] = mean
+    return mean_ratings

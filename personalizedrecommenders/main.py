@@ -14,6 +14,9 @@ import globals  # a file to store global variables to use them across all Python
 
 MOVIE_PICKLE_LOCATION = "movies_pickle_06-05-2018--23-43-45.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_06-05-2018--23-43-45.pkl"
+IICF_MODEL_NAME = "IICF-model_pickle_10-05-2018--11-26-46.pkl"
+RATINGS_X_BY_USERS_PATH = "RATINGS_X_BY_USERS_pickle_10-05-2018--07-00-01.pkl"
+MEAN_RATINGS_ITEM_PATH = "MEAN_RATINGS_ITEM_pickle_10-05-2018--07-00-02.pkl"
 CUT_OFF = 10  # gamma corresponds to the cut-off value of the significance weighting
 
 
@@ -50,7 +53,7 @@ def calculate_pearson_correlation(common_ratings, userAid, userUid):
 
 def calculate_mean_ratings(userID, ratings_by_user=None):
     """
-    Calculates the average of the ratings of the user given by parameter
+    Calculates the average of the ratings of the user 'userID'
     :param userID: int number of the id of the user
     :param ratings_by_user: list of ratings by the user. It's provided to speed-up execution in run-time
     :return: float number, average of the ratings
@@ -96,17 +99,7 @@ def calculate_significance_weighing_factor(userAid, userUid, ratings, amount=Non
     return float(min(CUT_OFF, amount))/float(CUT_OFF)
 
 
-def intersection_ratings_users(ratingsA, ratingsU):
-    # TODO: delete this function???
-    """
-    Intersects both ratings sets to find the common ratings by both users
-    :param ratingsA: list of ratings of user A
-    :param ratingsU: list of ratings of user B
-    :return: list of ratings
-    """
-
-#TODO: round the result of the prediction????
-def rating_prediction_user(userAid, itemID, neighborsIDs, neighbors_data=None):
+def rating_prediction_user(userAid, itemID, neighborsIDs, neighbors_data):
     """
     Calculates the rating prediction for user A and item 'itemID' based on the nearest neighbors.
     For UUCF, we only consider neighbors with positive similarity value.
@@ -114,18 +107,20 @@ def rating_prediction_user(userAid, itemID, neighborsIDs, neighbors_data=None):
     :param userAid: int number of user A
     :param itemID: int number of the item
     :param neighborsIDs: list of the nearest neighbors IDs. If empty, this means no neighbors were found!!
-    :param neighbors_data: dictionary that hols relevant values of neighbors (such as: Pearson value, common ratings...)
+    :param neighbors_data: dictionary that holds relevant values of neighbors (such as: Pearson value, common ratings...)
     :return: float number
     """
     if globals.RATINGS_BY_USER is None:
         raise ValueError("[Error] RATINGS_BY_USER is none! Cannot continue with the method!")
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
     ratings_by_user_A = globals.RATINGS_BY_USER[userAid]  # list of ALL ratings by user U
     mean_ratings_A = calculate_mean_ratings(userAid, ratings_by_user_A)  # mean ratings of user U
 
     # WATCH OUT! To save time and computation resources, there is no need to calculate the Pearson correlation
     # as many times as it appears in the formula.
     # A numerator and denominator have to be calculated: it would be convenient to collect the corresponding
-    # Pearson correlations once and use it either in numerator and denominator later on
+    # Pearson correlations once and use it either in numerator and denominator later on.
     # If 'neighbors_data' was populated with relevant data, we can obtain it from that dictionary.
     numerator = 0.0
     denominator = 0.0
@@ -133,19 +128,13 @@ def rating_prediction_user(userAid, itemID, neighborsIDs, neighbors_data=None):
     if len(neighborsIDs) == 0:
         return mean_ratings_A
     for userUid in neighborsIDs:
-        # common_ratings = neighbors_data[userUid]['common_ratings']  # retrieve common ratings TODO: to delete!
-        # common_ratings, amount = utils.find_common_ratings(userAid, userUid, None)  # common ratings TODO: to delete!
-        # pearson_value = calculate_pearson_correlation(common_ratings, userAid, userUid)  # calculation of Pearson correlation TODO: to delete!
-        # ratings_by_user_U = globals.RATINGS_BY_USER[userUid]  # list of ALL ratings by user U TODO: to delete!
         pearson_value = neighbors_data[userUid]['pearson']  # retrieve Pearson value
         ratings_by_user_U = neighbors_data[userUid]['ratings_by_user']  # retrieve all ratings by user U
         mean_ratings_U = calculate_mean_ratings(userUid, ratings_by_user_U)  # mean ratings of user U
         if globals.LOG_STATUS is True:
-            print "Pearson value with user {0} = {1}".format(userUid, pearson_value)
-        # Find the rating of user U for item 'itemID':
-        for rating in ratings_by_user_U:
-            if rating['movieid'] == itemID:
-                rating_u_i = rating['rating']
+            print "Pearson value for user {0} = {1}".format(userUid, pearson_value)
+        # Fetch the rating of user U for item 'itemID':
+        rating_u_i = globals.RATINGS_BY_USER_MAP[userUid][itemID]
         numerator = numerator + ((rating_u_i-mean_ratings_U)*pearson_value)
         denominator = denominator + pearson_value  # updating the denominator with accumulative Pearson correlation values
     return mean_ratings_A + (float(numerator)/float(denominator))
@@ -182,25 +171,24 @@ def top_k_most_similar_neighbors(userID, itemID, k=20):
             continue
         # The target item must be rated by current user, otherwise we will not consider current user as a neighbor:
         ratings_by_user_U = globals.RATINGS_BY_USER[userUid]
-        itemids_userU = [rating['movieid'] for rating in ratings_by_user_U]
+        itemids_userU = globals.RATINGS_BY_USER_MAP[userUid].keys()
         if itemID not in itemids_userU:
             continue
         common_ratings, amount = utils.find_common_ratings(userID, userUid, None)  # common ratings
         pearson_value = calculate_pearson_correlation(common_ratings, userID, userUid)  # calculation of Pearson correlation
         # We are only interested in positive similarity value. If it's negative, we skip it:
-        if pearson_value <= 0:
+        if pearson_value <= 0.0:
             continue
         # Relevant data of this user will be added to a dictionary for later use outside this method:
         neighbors_data[userUid] = {}
         neighbors_data[userUid]['pearson'] = pearson_value
         neighbors_data[userUid]['ratings_by_user'] = ratings_by_user_U
-        # neighbors_data[userUid]['common_ratings'] = common_ratings # TODO: to delete??? it's not necessary outside the scope of this method!
         # Pearson correlation value needs to be multiplied by significance weighting factor:
         pearson_value = pearson_value * calculate_significance_weighing_factor(userID, userUid, None, amount)
         user_pearson_tuples.append((userUid, pearson_value))
-        try:
+        if pearson_value in pearson_userids_dict:
             pearson_userids_dict[pearson_value].append(userUid)
-        except KeyError:
+        else:
             pearson_userids_dict[pearson_value] = []
             pearson_userids_dict[pearson_value].append(userUid)
     # Watch out! If none of the possible neighbors or users have rated the target item or by any reason no neighbors were found,
@@ -210,15 +198,19 @@ def top_k_most_similar_neighbors(userID, itemID, k=20):
     else:
         mysorted = sorted(user_pearson_tuples, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL Pearson value
         if globals.LOG_STATUS is True:
-            print "Len(mysorted) = ", len(mysorted)
+            print "Len(mysorted) # similar users found = ", len(mysorted)
         # Now we should delete duplicate Pearson values. In case of draw, keep the one corresponding to the user with lowest ID:
+        tmp = []  # temporal list to keep track of which Pearson values we have already used
         for tuple in mysorted:
             current_pearson_value = tuple[1]
+            if current_pearson_value in tmp:
+                continue
             amount_users_with_same_pearson_value = len(pearson_userids_dict[current_pearson_value])
             if amount_users_with_same_pearson_value > 1:
                 neighborsIDs.append(min(pearson_userids_dict[current_pearson_value]))
             else:
                 neighborsIDs.append(tuple[0])
+            tmp.append(current_pearson_value)
             if len(neighborsIDs) == k:
                 break
         if globals.LOG_STATUS is True:
@@ -232,12 +224,11 @@ def top_k_most_similar_neighbors(userID, itemID, k=20):
     return neighborsIDs, neighbors_data
 
 
-def topN_recommendations_uucf(userID, ratings, movies, N=10):
+def topN_recommendations_uucf(userID, movies, N=10):
     """
     Top N list of recommendations for a certain user given by parameter over all the ratings.
     For this, rating prediction has to be calculated over all items that userID didn't consumed yet.
     :param userID: int number of the user
-    :param ratings: a list of ALL ratings
     :param movies: a list of ALL movies
     :param N: number of recommended items
     :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
@@ -247,77 +238,295 @@ def topN_recommendations_uucf(userID, ratings, movies, N=10):
 
     if globals.RATINGS_BY_USER is None:
         raise ValueError("[Error] RATINGS_BY_USER is none! Cannot continue with the method!")
-    ratings_by_user = globals.RATINGS_BY_USER[userID] # list of ALL ratings by the user
-    itemids_user = [rating['movieid'] for rating in ratings_by_user]
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
+    itemids_user = globals.RATINGS_BY_USER_MAP[userID].keys()  # item IDs of those items rated by user
     # A list for all rating predictions from all those items that the user has not rated yet:
     # The list contains tuples with the form: ("itemid", "rating prediction")
     rating_predictions = []
-    for rating in ratings:
-        print "------------> movie id = ", rating['movieid'] # TODO: to delete!
+    allItems = [int(movie['id']) for movie in movies.values()]  # we retrieve all item IDs
+    for movieid in allItems:
+        # print "------------> movie id = ", movieid  # TODO: to delete!
         # Skip item if the user has already consumed that item!
-        if rating['movieid'] in itemids_user:
+        if movieid in itemids_user:
             continue
-        neighborsIDs, neighbors_data = top_k_most_similar_neighbors(userID, rating['movieid'])
-        print "\t| 'top_k_most_similar_neighbors' computed!" # TODO: to delete!
+        neighborsIDs, neighbors_data = top_k_most_similar_neighbors(userID, movieid)
         if globals.LOG_STATUS is True:
-            print "neighbors IDs (item:{0}) = {1}".format(rating['movieid'], neighborsIDs)
-        prediction = rating_prediction_user(userID, rating['movieid'], neighborsIDs, neighbors_data)
-        print "\t| 'rating_prediction_user' computed!" # TODO: to delete!
-        rating_predictions.append((rating['movieid'], prediction))
-        try:
-            prediction_itemids_dict[prediction].append(rating['movieid'])
-        except KeyError:
+            print "neighbors IDs (item:{0}) = {1}".format(movieid, neighborsIDs)
+        prediction = rating_prediction_user(userID, movieid, neighborsIDs, neighbors_data)
+        rating_predictions.append((movieid, prediction))
+        if prediction in prediction_itemids_dict:
+            prediction_itemids_dict[prediction].append(movieid)
+        else:
             prediction_itemids_dict[prediction] = []
-            prediction_itemids_dict[prediction].append(rating['movieid'])
+            prediction_itemids_dict[prediction].append(movieid)
     mysorted = sorted(rating_predictions, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL prediction value
     # Now we should delete duplicate Pearson values. In case of draw, keep the one corresponding to the item with lowest ID:
+    print "mysorted (TOP N recommendations user 522): ", mysorted[0:10]
+    tmp = []  # temporal list to keep track of which Pearson values we have already used
     topN = []
     for tuple in mysorted:
         current_prediction_value = tuple[1]
+        if current_prediction_value in tmp:
+            continue
         amount_items_with_same_prediction_value = len(prediction_itemids_dict[current_prediction_value])
         if amount_items_with_same_prediction_value > 1:
-            topN.append((tuple[0], movies[str(tuple[0])]['title'], min(prediction_itemids_dict[current_prediction_value])))
+            lowest_id = min(prediction_itemids_dict[current_prediction_value])
+            topN.append((lowest_id, movies[str(lowest_id)]['title'], tuple[1]))
         else:
             topN.append((tuple[0], movies[str(tuple[0])]['title'], tuple[1]))
+        tmp.append(current_prediction_value)
+        if len(topN) == N:
+            break
     return topN
+
+
+def build_model_iicf(movies, ratings):
+    """
+    Builds the IICF model using cosine similarity
+    :param movies: list of ALL movies
+    :param ratings: list of ALL ratings
+    :return: nothing
+    """
+    # Firstly, we capture all item IDs (movie IDs) to iterate through them:
+    # We cannot assume that the IDs go from 1 to 9125. That's the reason why we better retrieve them from the movie list.
+    itemIDs = [int(movie['id']) for movie in movies.values()]
+    itemIDs = sorted(itemIDs)  # ordered from BIG to SMALL
+    globals.IICF_MODEL = {}  # reset the model just in case
+    for item_i in itemIDs:
+        for item_j in itemIDs:
+            # Skip similarity with itself!
+            if item_i == item_j:
+                continue
+            # print "({0},{1})".format(item_i, item_j)
+            cos_similarity = compute_cosine_similarity(item_i, item_j)  # compute cosine similarity
+            print "{0} --> ({1}, {2})".format(cos_similarity, item_i, item_j)
+            if cos_similarity is not None and cos_similarity > 0.0:
+                if item_j in globals.IICF_MODEL[item_i]:
+                    globals.IICF_MODEL[item_i][item_j] = cos_similarity
+                else:
+                    globals.IICF_MODEL[item_i] = {}
+                    globals.IICF_MODEL[item_i][item_j] = cos_similarity
+    print "IICF model build!"
 
 
 def compute_cosine_similarity(itemID_i,itemID_j):
     """
-    Computes cosine similarity between item i and item j
+    Computes cosine similarity between item i and item j.
+    Watch out! To speed-up the execution time several data objects are already provided by means of global variables.
+    If any of those global variables is missin (None) this method cannot proceed.
     :param itemID_i: int number of item i
     :param itemID_j: int number of item j
     :return: float number
     """
+    if globals.RATINGS_BY_USER is None:
+        raise ValueError("[Error] RATINGS_BY_USER is none! Cannot continue with the method!")
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
+    if globals.RATINGS_X_BY_USERS is None:
+        raise ValueError("[Error] RATINGS_X_BY_USERS is none! Cannot continue with the method!")
+    if globals.MEAN_RATINGS_ITEM is None:
+        raise ValueError("[Error] MEAN_RATINGS_ITEM is none! Cannot continue with the method!")
+    ratings_i_by_users = globals.RATINGS_X_BY_USERS[itemID_i]
+    ratings_j_by_users = globals.RATINGS_X_BY_USERS[itemID_j]
+    mean_ratings_i = globals.MEAN_RATINGS_ITEM[itemID_i]
+    mean_ratings_j = globals.MEAN_RATINGS_ITEM[itemID_j]
+    d_i = calculate_item_mean_centered_rating(ratings_i_by_users, mean_ratings_i)  # this is the calculation of one part of the formula
+    d_j = calculate_item_mean_centered_rating(ratings_j_by_users, mean_ratings_j)  # this is the calculation of one part of the formula
+    # Calculation of denominator:
+    denominator = float(np.sqrt(d_i) * np.sqrt(d_j))
+    if denominator == 0.0:
+        return 0.0
+    # Calculation of numerator:
+    numerator = 0.0
+    for userIDs in globals.RATINGS_BY_USER.keys():
+        try:
+            rating_i = globals.RATINGS_BY_USER_MAP[userIDs][itemID_i]  # rating of the user for item i
+            rating_j = globals.RATINGS_BY_USER_MAP[userIDs][itemID_j]  # rating of the user for item j
+        except KeyError:
+            continue
+        numerator += float(rating_i - mean_ratings_i) * float(rating_j - mean_ratings_j)
+    return numerator/denominator
 
 
-def calculate_item_mean_centered_rating(itemID, userID, avgRatingItem):
+def calculate_mean_ratings_for_item(itemID, ratings_by_users=None, ratings=None):
     """
-    Calculates centered mean rating of the item 'itemID' for all users.
-    :param itemID: int number of the item
-    :param userID: int number of the user
-    :param avgRatingItem: mean ratings of item 'itemID'
+    Calculates the average of the ratings of all users who rated this item
+    :param itemID: int number of the id of the item
+    :param ratings_by_users: list of ratings by all users. Provided by parameter to speed-up execution in run-time.
+    :param ratings: list of ALL ratings
+    :return: float number, average of the ratings
+    """
+    # To avoid excessive computation during run-time, the item ratings are provided by parameter.
+    # If it's not none, then it can be used, otherwise we need to calculate it.
+    if ratings_by_users is not None:
+        return np.mean([rating['rating'] for rating in ratings_by_users])
+    else:
+        if ratings is not None:
+            tmp = [rating for rating in ratings if rating['movieid']==itemID]
+            return np.mean([rating['rating'] for rating in tmp])
+        else:
+            raise ValueError("[Error] 'ratings' is none! Cannot continue with the method!")
+
+
+def calculate_item_mean_centered_rating(ratings_by_users, avgRatingItem):
+    """
+    Calculates centered mean rating of an item among all users who rated that item
+    :param ratings_by_users: list of ratings for an item. Ratings over which we want to calculate user mean centered rating.
+    :param avgRatingItem: mean ratings of item
     :return: float number
     """
+    sum = 0.0
+    for rating in ratings_by_users:
+        sum = sum + pow(rating['rating'] - avgRatingItem, 2)
+    return sum
 
 
-def rating_prediction_item(itemID_i, userID):
+def rating_prediction_item(itemID_i, userID, neighborsIDs=None):
     """
-    Calculates the rating prediction for user 'userID' and item
+    Calculates the rating prediction for target user 'userID' and target item 'itemID_i'
     :param itemID_i: int number of the item
     :param userID: int number of the user
+    :param neighborsIDs: a list of tuples with the form: ("itemJid", "similarity value") with the top k most similar users
     :return: float number
     """
+    if globals.IICF_MODEL is None:
+        raise ValueError("[Error] IICF_MODEL is none! Cannot continue with the method!")
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
+    numerator = 0.0
+    denominator = 0.0
+    # We find the top-k most similar neighbors (items) that are also rated by user:
+    # we get a list of tuples with the form: ("itemJid", "similarity value")
+    if neighborsIDs is not None:
+        itemid_similarities_tuples = neighborsIDs
+    else:
+        itemid_similarities_tuples = top_k_most_similar_items(userID, itemID_i)
+    # print itemid_similarities_tuples
+    # If the neighborhood size is 0, the rating prediction takes 0 as well:
+    if len(itemid_similarities_tuples) == 0:
+        return 0.0
+    # Calculating the rating prediction:
+    for tuple in itemid_similarities_tuples:
+        numerator = numerator + tuple[1]*globals.RATINGS_BY_USER_MAP[userID][tuple[0]]
+        denominator = denominator + abs(tuple[1])
+    return float(numerator)/float(denominator)
 
 
-def topN_recommendations_iicf(userID, ratings, N=10):
+def top_k_most_similar_items(userID, itemID, k=20):
     """
-    ??????
-    :param userID:
-    :param ratings:
-    :return:
+    Retrieves the most similar items that are rated by user 'userID' based on the pre-computed similarities.
+    :param userID: int number of the user
+    :param userID: int number of the item
+    :param k: int number ideal number of neighbors to find
+    :return: list of tuples with the form: ("itemJid", "similarity value")
     """
-    pass
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
+    if globals.IICF_MODEL is None:
+        raise ValueError("[Error] IICF_MODEL is none! Cannot continue with the method!")
+    # List of tuples with the form: ("itemJid", "similarity value"):
+    item_similarity_tuples = []
+    # Firstly, we retrieve the item IDs of the items that the user rated. Top-k most similar items ensures that similar
+    # items are actually rated by the user:
+    itemIDs_rated_by_user = globals.RATINGS_BY_USER_MAP[userID].keys()
+    # The model only contains positive similarity values, let's check if current itemID is in the model:
+    if itemID not in globals.IICF_MODEL:
+        return item_similarity_tuples
+    # Secondly, we iterate over all positive similar items of 'itemID' making sure the item was rated by current user:
+    # The goal is to find the 'k' most similar items:
+    for itemid in globals.IICF_MODEL[itemID].keys():
+        if itemid in itemIDs_rated_by_user:
+            item_similarity_tuples.append((itemid, globals.IICF_MODEL[itemID][itemid]))
+    if len(item_similarity_tuples) == 0:
+        return item_similarity_tuples
+    mysorted = sorted(item_similarity_tuples, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL similarity value
+    if globals.LOG_STATUS is True:
+        print "Len(mysorted) (# similar items found) = ", len(mysorted)
+    return mysorted[0:k]
+
+
+def topN_recommendations_iicf(userID, movies, N=10):
+    """
+    Top N list of recommendations for a certain target user and target item.
+    Items cannot be the ones already rated by the target user.
+    :param userID: int number of the user
+    :param movies: a list of ALL movies
+    :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
+    """
+    if globals.RATINGS_BY_USER_MAP is None:
+        raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
+    # List of tuples with the form: ("itemJid", "similarity value"):
+    item_prediction_tuples = []
+    # Firstly, we retrieve the item IDs of the items that the user rated. Top-N recommendations cannot recommend items
+    # that have already been consumed.
+    itemIDs_rated_by_user = globals.RATINGS_BY_USER_MAP[userID].keys()
+    allItems = [int(movie['id']) for movie in movies.values()]
+    for movieid in allItems:
+        # Skip item if already rated by user:
+        if movieid in itemIDs_rated_by_user:
+            continue
+        # print "movie id = ", movieid
+        most_similar_items_tuples = top_k_most_similar_items(userID, movieid)  # search for top k most similar items with current movie ID
+        if len(most_similar_items_tuples) != 0:
+            prediction = rating_prediction_item(movieid, userID, most_similar_items_tuples)  # perform the prediction
+            # print "\t| prediction = ", prediction
+            item_prediction_tuples.append((movieid, prediction))  # append the prediction to the final list (before sorting)
+    mysorted = sorted(item_prediction_tuples, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL prediction value
+    topN = []  # final TOP N list
+    for tuple in mysorted[0:N]:
+        topN.append((tuple[0],movies[str(tuple[0])]['title'],tuple[1]))
+    return topN
+
+
+def topN_recommendations_basket(basket, movies, N=10):
+    """
+    Top N list of recommendations based on the item(s) in the basket.
+    If shopping basket contains only 1 item, the recommendations are the most similar items.
+    If multiple items in the basket, score for target item is calculated as the sum of similarities between
+    target item and all items in the basket.
+    :param basket: list of ints of item IDs in the basket
+    :param movies: list of ALL movies
+    :param N: int number of items to recommend
+    :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
+    """
+    score_target_items = []  # a list of tuples with the form ('itemID', 'score')
+    allItems = [int(movie['id']) for movie in movies.values()]  # all item IDs
+    if len(basket) == 1:
+        for movieid in allItems:
+            # Skip cosine similarity with itself:
+            if movieid == basket[0]:
+                continue
+            score_target_items.append((movieid, compute_cosine_similarity(movieid, basket[0])))
+    elif len(basket) > 1:
+        for movieid in allItems:
+            score = sum(compute_cosine_similarity(movieid, j) for j in basket if movieid!=j) # Skip cosine similarity with itself:
+            score_target_items.append((movieid, score))
+    mysorted = sorted(score_target_items, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL score value
+    topN = []  # final TOP N list
+    for tuple in mysorted[0:N]:
+        topN.append((tuple[0], movies[str(tuple[0])]['title'], tuple[1]))
+    return topN
+
+
+def topN_recommendations_hybrid(userID, movies, weight_uucf=0.5, weight_iicf=0.5, N=10):
+    """
+    Combines two recommenders: UUCF and IICF. Both with equal weights by default: 50%
+    :param userID: int number of the user to whom the recommendations are calculated
+    :param weight_uucf: float number of the weight for this recommender
+    :param weight_iicf: float number of the weight for this recommender
+    :param N: int number of items to recommend
+    :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
+    """
+    topn_uucf = topN_recommendations_uucf(userID, movies) # returns top-N recommended items with the form ("item id, title, prediction value")
+    topn_iicf = topN_recommendations_iicf(userID, movies) # returns top-N recommended items with the form ("item id, title, prediction value")
+    topn_hybrid = []  # list of tuples with the form: ("item id, title, prediction value")
+    # TODO: find the common item IDs!
+    for tuple1, tuple2 in zip(topn_uucf,topn_iicf):
+        prediction_uucf = tuple1[2]
+        prediction_iicf = tuple2[2]
+        prediction_hybrid = prediction_uucf*weight_uucf + prediction_iicf*weight_iicf
+        topn_hybrid.append((tuple1[0], tuple1[1], prediction_hybrid))
 
 def main():
     # Load data and parse it:
@@ -352,8 +561,38 @@ def test():
     print "len(movies_pkl): ", len(movies_pkl)
     print "len(ratings_pkl): ", len(ratings_pkl)
     globals.RATINGS_BY_USER = utils.extract_ratings_by_users(ratings_pkl)
+    globals.RATINGS_BY_USER_MAP = utils.extract_ratings_by_users_map(ratings_pkl)
+    # globals.RATINGS_X_BY_USERS = utils.extract_ratings_x_by_users(movies_pkl, ratings_pkl)
+    # globals.MEAN_RATINGS_ITEM = utils.extract_mean_ratings(movies_pkl)
+    globals.RATINGS_X_BY_USERS = data.load_pickle(RATINGS_X_BY_USERS_PATH)  # load pickle
+    globals.MEAN_RATINGS_ITEM = data.load_pickle(MEAN_RATINGS_ITEM_PATH)  # load pickle
+    print "len(RATINGS_BY_USER): ", len(globals.RATINGS_BY_USER)
+    print "len(RATINGS_BY_USER_MAP): ", len(globals.RATINGS_BY_USER_MAP)
+    print "len(RATINGS_X_BY_USERS): ", len(globals.RATINGS_X_BY_USERS)
+    print "len(MEAN_RATINGS_ITEM): ", len(globals.MEAN_RATINGS_ITEM)
+    # Dump some globals:
+    # data.dump_pickle(globals.RATINGS_X_BY_USERS, data.generate_file_name("RATINGS_X_BY_USERS", "pkl"))
+    # data.dump_pickle(globals.MEAN_RATINGS_ITEM, data.generate_file_name("MEAN_RATINGS_ITEM", "pkl"))
+
     # Testing methods:
     # ...
+
+    # build_model_iicf(movies_pkl, ratings_pkl)
+    # Dump the IICF model to pickle into file system:
+    # data.dump_pickle(globals.IICF_MODEL, data.generate_file_name("IICF-model", "pkl"))
+    # Load the pickle of the IICF model:
+    globals.IICF_MODEL = data.load_pickle(IICF_MODEL_NAME)
+    # print "len(IICF_MODEL) =", len(globals.IICF_MODEL)
+    # print "-----------------------"
+    # print "globals.IICF_MODEL[594][596] similarity =", globals.IICF_MODEL[594][596]
+    # pre = rating_prediction_item(25,522)
+    # print "Rating prediction for item 25 and user 522: ", pre
+    # print "-----------------------"
+    # print "Top N recommendations for user with id=522:"
+    # result = topN_recommendations_iicf(522,movies_pkl)
+    # for item in result:
+    #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
+    # print "-----------------------"
     common_ratings, amount = utils.find_common_ratings(1,4,ratings_pkl)
     print "Amount of common ratings = ", amount
     pearson_value = calculate_pearson_correlation(common_ratings,1,4)
@@ -375,12 +614,23 @@ def test():
     rating = rating_prediction_user(1, 260, neighborsIDs, neighbors_data)
     print "\t| Rating: ", rating
     print "-----------------------"
-    print "TOP-N recommended items for user 1:"
-    topn = topN_recommendations_uucf(1, ratings_pkl, movies_pkl)
+    # print "TOP-N recommended items for user 522:"
+    # topn = topN_recommendations_uucf(522, movies_pkl)
+    # for item in topn:
+    #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
+    # print "-----------------------"
+    print "BASKET top-N recommendations ---> basket:[1]"
+    basket = [1]
+    topn = topN_recommendations_basket(basket, movies_pkl)
     for item in topn:
         print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
-
-
+    print "-----------------------"
+    print "BASKET top-N recommendations ---> basket:[1,48,239]"
+    basket = [1, 48, 239]
+    topn = topN_recommendations_basket(basket, movies_pkl)
+    for item in topn:
+        print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
+    print "-----------------------"
 
 if __name__ == '__main__':
     # main()

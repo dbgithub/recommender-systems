@@ -1,3 +1,6 @@
 myvenv
 .directory
 *.pyc
+IICF*.pkl
+MEAN*.pkl
+RATINGS*.pkl
