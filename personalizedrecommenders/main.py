@@ -14,7 +14,7 @@ import globals  # a file to store global variables to use them across all Python
 
 MOVIE_PICKLE_LOCATION = "movies_pickle_06-05-2018--23-43-45.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_06-05-2018--23-43-45.pkl"
-IICF_MODEL_NAME = "IICF-model_pickle_10-05-2018--11-26-46.pkl"
+# IICF_MODEL_NAME = "IICF-model_pickle_10-05-2018--11-26-46.pkl"
 RATINGS_X_BY_USERS_PATH = "RATINGS_X_BY_USERS_pickle_10-05-2018--07-00-01.pkl"
 MEAN_RATINGS_ITEM_PATH = "MEAN_RATINGS_ITEM_pickle_10-05-2018--07-00-02.pkl"
 CUT_OFF = 10  # gamma corresponds to the cut-off value of the significance weighting
@@ -262,7 +262,6 @@ def topN_recommendations_uucf(userID, movies, N=10):
             prediction_itemids_dict[prediction].append(movieid)
     mysorted = sorted(rating_predictions, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL prediction value
     # Now we should delete duplicate Pearson values. In case of draw, keep the one corresponding to the item with lowest ID:
-    print "mysorted (TOP N recommendations user 522): ", mysorted[0:10]
     tmp = []  # temporal list to keep track of which Pearson values we have already used
     topN = []
     for tuple in mysorted:
@@ -293,20 +292,62 @@ def build_model_iicf(movies, ratings):
     itemIDs = [int(movie['id']) for movie in movies.values()]
     itemIDs = sorted(itemIDs)  # ordered from BIG to SMALL
     globals.IICF_MODEL = {}  # reset the model just in case
+    globals.IICF_MODEL[-1] = {}  # declare negative branch as a dictionary in the model
+    globals.IICF_MODEL[1] = {}  # declare positive branch as a dictionary in the model
+    flag_calculate = False  # a boolean flag to indicate whether cosine similarity has to be calculated or not.
     for item_i in itemIDs:
         for item_j in itemIDs:
             # Skip similarity with itself!
             if item_i == item_j:
                 continue
             # print "({0},{1})".format(item_i, item_j)
+            # Cosine similarity calculation may take big amount of time if sim(i,j)=sim(j,i) is not taken into account.
+            # Therefore, we will check if the value for its counterpart is already computed or not.
+            # Given the data structure designed for the IICF MODEL, first we need to check if the possible computed value resides in the negative or positive branch of the model.
+            # Based on that, we will set a flag to True or False to indicate that we need to calculate the Cosine similarity or not.
+            if item_i not in globals.IICF_MODEL[1]:
+                if item_i not in globals.IICF_MODEL[-1]:
+                    flag_calculate = True
+                elif item_j not in globals.IICF_MODEL[-1][item_i]:
+                    try:
+                        if item_j in globals.IICF_MODEL[1][item_i]:
+                            flag_calculate = False
+                        else:
+                            flag_calculate = True
+                    except KeyError:
+                        flag_calculate = True
+            elif item_j not in globals.IICF_MODEL[1][item_i]:
+                try:
+                    if item_j in globals.IICF_MODEL[-1][item_i]:
+                        flag_calculate = False
+                    else:
+                        flag_calculate = True
+                except KeyError:
+                    flag_calculate = True
+            # Now we check if flag was set to True or False:
+            if flag_calculate is False:
+                continue  # this means no need to calculate cosine similarity for this pair of indexes
+            flag_calculate = False  # reset flag
             cos_similarity = compute_cosine_similarity(item_i, item_j)  # compute cosine similarity
             print "{0} --> ({1}, {2})".format(cos_similarity, item_i, item_j)
-            if cos_similarity is not None and cos_similarity > 0.0:
-                if item_j in globals.IICF_MODEL[item_i]:
-                    globals.IICF_MODEL[item_i][item_j] = cos_similarity
-                else:
-                    globals.IICF_MODEL[item_i] = {}
-                    globals.IICF_MODEL[item_i][item_j] = cos_similarity
+            # After calculating cosine similarity, the value has to be stored in (i,j) location and (j,i) too.
+            # For this, we need to check if the computed similarity is positive or negative:
+            if cos_similarity is not None and cos_similarity > 0.0:  # POSITIVE similarities
+                if item_i not in globals.IICF_MODEL[1]:
+                    globals.IICF_MODEL[1][item_i] = {}
+                globals.IICF_MODEL[1][item_i][item_j] = cos_similarity
+                # sim(i,j) has been stored, so we know that sim(j,i) takes the same value:
+                if item_j not in globals.IICF_MODEL[1]:
+                    globals.IICF_MODEL[1][item_j] = {}
+                globals.IICF_MODEL[1][item_j][item_i] = cos_similarity
+            elif cos_similarity is not None and cos_similarity < 0.0:  # NEGATIVE similarities
+                if item_i not in globals.IICF_MODEL[-1]:
+                    globals.IICF_MODEL[-1][item_i] = {}
+                globals.IICF_MODEL[-1][item_i][item_j] = cos_similarity
+                # sim(i,j) has been stored, so we know that sim(j,i) takes the same value:
+                if item_j not in globals.IICF_MODEL[-1]:
+                    globals.IICF_MODEL[-1][item_j] = {}
+                globals.IICF_MODEL[-1][item_j][item_i] = cos_similarity
     print "IICF model build!"
 
 
@@ -390,8 +431,6 @@ def rating_prediction_item(itemID_i, userID, neighborsIDs=None):
     :param neighborsIDs: a list of tuples with the form: ("itemJid", "similarity value") with the top k most similar users
     :return: float number
     """
-    if globals.IICF_MODEL is None:
-        raise ValueError("[Error] IICF_MODEL is none! Cannot continue with the method!")
     if globals.RATINGS_BY_USER_MAP is None:
         raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
     numerator = 0.0
@@ -425,19 +464,26 @@ def top_k_most_similar_items(userID, itemID, k=20):
         raise ValueError("[Error] RATINGS_BY_USER_MAP is none! Cannot continue with the method!")
     if globals.IICF_MODEL is None:
         raise ValueError("[Error] IICF_MODEL is none! Cannot continue with the method!")
+    if globals.SIMILARITY_TYPE is None:
+        raise ValueError("[Error] SIMILARITY_TYPE is none! Cannot continue with the method!")
     # List of tuples with the form: ("itemJid", "similarity value"):
     item_similarity_tuples = []
     # Firstly, we retrieve the item IDs of the items that the user rated. Top-k most similar items ensures that similar
     # items are actually rated by the user:
     itemIDs_rated_by_user = globals.RATINGS_BY_USER_MAP[userID].keys()
     # The model only contains positive similarity values, let's check if current itemID is in the model:
-    if itemID not in globals.IICF_MODEL:
+    if itemID not in globals.IICF_MODEL[1] and itemID not in globals.IICF_MODEL[-1]:
         return item_similarity_tuples
-    # Secondly, we iterate over all positive similar items of 'itemID' making sure the item was rated by current user:
+    # Secondly, we iterate over all positive AND/OR negative similar items of 'itemID' making sure the item was rated by current user:
     # The goal is to find the 'k' most similar items:
-    for itemid in globals.IICF_MODEL[itemID].keys():
-        if itemid in itemIDs_rated_by_user:
-            item_similarity_tuples.append((itemid, globals.IICF_MODEL[itemID][itemid]))
+    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive():
+        for itemid in globals.IICF_MODEL[1][itemID].keys():
+            if itemid in itemIDs_rated_by_user:
+                item_similarity_tuples.append((itemid, globals.IICF_MODEL[1][itemID][itemid]))
+    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative():
+        for itemid in globals.IICF_MODEL[-1][itemID].keys():
+            if itemid in itemIDs_rated_by_user:
+                item_similarity_tuples.append((itemid, globals.IICF_MODEL[-1][itemID][itemid]))
     if len(item_similarity_tuples) == 0:
         return item_similarity_tuples
     mysorted = sorted(item_similarity_tuples, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL similarity value
@@ -518,15 +564,15 @@ def topN_recommendations_hybrid(userID, movies, weight_uucf=0.5, weight_iicf=0.5
     :param N: int number of items to recommend
     :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
     """
-    topn_uucf = topN_recommendations_uucf(userID, movies) # returns top-N recommended items with the form ("item id, title, prediction value")
-    topn_iicf = topN_recommendations_iicf(userID, movies) # returns top-N recommended items with the form ("item id, title, prediction value")
-    topn_hybrid = []  # list of tuples with the form: ("item id, title, prediction value")
-    # TODO: find the common item IDs!
-    for tuple1, tuple2 in zip(topn_uucf,topn_iicf):
-        prediction_uucf = tuple1[2]
-        prediction_iicf = tuple2[2]
-        prediction_hybrid = prediction_uucf*weight_uucf + prediction_iicf*weight_iicf
+    topn_uucf = topN_recommendations_uucf(userID, movies, N) # returns top-N recommended items with the form ("item id, title, prediction value")
+    topn_iicf = topN_recommendations_iicf(userID, movies, N) # returns top-N recommended items with the form ("item id, title, prediction value")
+    # List of tuples with the form: ("item id, title, prediction value for iicf, prediction value for uucf"):
+    merge = [(tuple1[0], tuple1[1], tuple1[2], tuple2[2]) for tuple1 in topn_iicf for tuple2 in topn_uucf if tuple1[0]==tuple2[0]]
+    topn_hybrid = []
+    for tuple in merge:
+        prediction_hybrid = tuple[2]*weight_iicf + tuple[3]*weight_uucf
         topn_hybrid.append((tuple1[0], tuple1[1], prediction_hybrid))
+    return topn_hybrid
 
 def main():
     # Load data and parse it:
@@ -566,10 +612,12 @@ def test():
     # globals.MEAN_RATINGS_ITEM = utils.extract_mean_ratings(movies_pkl)
     globals.RATINGS_X_BY_USERS = data.load_pickle(RATINGS_X_BY_USERS_PATH)  # load pickle
     globals.MEAN_RATINGS_ITEM = data.load_pickle(MEAN_RATINGS_ITEM_PATH)  # load pickle
+    globals.SIMILARITY_TYPE = globals.SimilarityType()
     print "len(RATINGS_BY_USER): ", len(globals.RATINGS_BY_USER)
     print "len(RATINGS_BY_USER_MAP): ", len(globals.RATINGS_BY_USER_MAP)
     print "len(RATINGS_X_BY_USERS): ", len(globals.RATINGS_X_BY_USERS)
     print "len(MEAN_RATINGS_ITEM): ", len(globals.MEAN_RATINGS_ITEM)
+    print "SIMILARITY_TYPE.type(): ", globals.SIMILARITY_TYPE.type()
     # Dump some globals:
     # data.dump_pickle(globals.RATINGS_X_BY_USERS, data.generate_file_name("RATINGS_X_BY_USERS", "pkl"))
     # data.dump_pickle(globals.MEAN_RATINGS_ITEM, data.generate_file_name("MEAN_RATINGS_ITEM", "pkl"))
@@ -581,10 +629,13 @@ def test():
     # Dump the IICF model to pickle into file system:
     # data.dump_pickle(globals.IICF_MODEL, data.generate_file_name("IICF-model", "pkl"))
     # Load the pickle of the IICF model:
-    globals.IICF_MODEL = data.load_pickle(IICF_MODEL_NAME)
+    # globals.IICF_MODEL = data.load_pickle(IICF_MODEL_NAME)
     # print "len(IICF_MODEL) =", len(globals.IICF_MODEL)
+    # print "len(IICF_MODEL) positives =", len(globals.IICF_MODEL[1])
+    # print "len(IICF_MODEL) negatives =", len(globals.IICF_MODEL[-1])
+    # print "value = ", globals.IICF_MODEL[-1][10][148626]
+    # print "globals.IICF_MODEL[1][594][596] similarity =", globals.IICF_MODEL[1][594][596]
     # print "-----------------------"
-    # print "globals.IICF_MODEL[594][596] similarity =", globals.IICF_MODEL[594][596]
     # pre = rating_prediction_item(25,522)
     # print "Rating prediction for item 25 and user 522: ", pre
     # print "-----------------------"
@@ -593,44 +644,65 @@ def test():
     # for item in result:
     #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
     # print "-----------------------"
-    common_ratings, amount = utils.find_common_ratings(1,4,ratings_pkl)
-    print "Amount of common ratings = ", amount
-    pearson_value = calculate_pearson_correlation(common_ratings,1,4)
-    print "Pearson correlation between 1 and 4 =", pearson_value
-    print "Pearson X significance weighting =", pearson_value*calculate_significance_weighing_factor(1,4,ratings_pkl, None)
-    print "Top-k most similar positive users of user 1 and target item 10:"
-    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 10)
-    print "\t| neighborsIDs: ", neighborsIDs
-    print "\t| neighbors data --> count: ", len(neighbors_data)
-    print "Ratings prediction for user 1 and target item 10:"
-    rating = rating_prediction_user(1,10,neighborsIDs,neighbors_data)
-    print "\t| Rating: ", rating
-    print "-----------------------"
-    print "Top-k most similar positive users of user 1 and target item 260:"
-    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 260)
-    print "\t| neighborsIDs: ", neighborsIDs
-    print "\t| neighbors data --> count: ", len(neighbors_data)
-    print "Ratings prediction for user 1 and target item 260:"
-    rating = rating_prediction_user(1, 260, neighborsIDs, neighbors_data)
-    print "\t| Rating: ", rating
-    print "-----------------------"
+    # common_ratings, amount = utils.find_common_ratings(1,4,ratings_pkl)
+    # print "Amount of common ratings = ", amount
+    # pearson_value = calculate_pearson_correlation(common_ratings,1,4)
+    # print "Pearson correlation between 1 and 4 =", pearson_value
+    # print "Pearson X significance weighting =", pearson_value*calculate_significance_weighing_factor(1,4,ratings_pkl, None)
+    # print "Top-k most similar positive users of user 1 and target item 10:"
+    # neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 10)
+    # print "\t| neighborsIDs: ", neighborsIDs
+    # print "\t| neighbors data --> count: ", len(neighbors_data)
+    # print "Ratings prediction for user 1 and target item 10:"
+    # rating = rating_prediction_user(1,10,neighborsIDs,neighbors_data)
+    # print "\t| Rating: ", rating
+    # print "-----------------------"
+    # print "Top-k most similar positive users of user 1 and target item 260:"
+    # neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 260)
+    # print "\t| neighborsIDs: ", neighborsIDs
+    # print "\t| neighbors data --> count: ", len(neighbors_data)
+    # print "Ratings prediction for user 1 and target item 260:"
+    # rating = rating_prediction_user(1, 260, neighborsIDs, neighbors_data)
+    # print "\t| Rating: ", rating
+    # print "-----------------------"
     # print "TOP-N recommended items for user 522:"
     # topn = topN_recommendations_uucf(522, movies_pkl)
     # for item in topn:
     #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
     # print "-----------------------"
-    print "BASKET top-N recommendations ---> basket:[1]"
-    basket = [1]
-    topn = topN_recommendations_basket(basket, movies_pkl)
-    for item in topn:
-        print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
-    print "-----------------------"
-    print "BASKET top-N recommendations ---> basket:[1,48,239]"
-    basket = [1, 48, 239]
-    topn = topN_recommendations_basket(basket, movies_pkl)
-    for item in topn:
-        print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
-    print "-----------------------"
+    # print "BASKET top-N recommendations ---> basket:[1]"
+    # basket = [1]
+    # topn = topN_recommendations_basket(basket, movies_pkl)
+    # for item in topn:
+    #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
+    # print "-----------------------"
+    # print "BASKET top-N recommendations ---> basket:[1,48,239]"
+    # basket = [1, 48, 239]
+    # topn = topN_recommendations_basket(basket, movies_pkl)
+    # for item in topn:
+    #     print "\t|({0},{1},{2})".format(item[0], item[1], item[2])
+    # print "-----------------------"
+    # print "Hybrid recommender for user 522:"
+    # topN_recommendations_hybrid(522, movies_pkl)
+    # print "-----------------------"
+    # print "Playing with SimilarityType:"
+    # print "Current similarity type = ", globals.SIMILARITY_TYPE.type()
+    # print "Set similarity type to 'Positive': "
+    # globals.SIMILARITY_TYPE.setPositive()
+    # print "\t Type: ", globals.SIMILARITY_TYPE.type()
+    # print "Set similarity type to 'Negative': "
+    # globals.SIMILARITY_TYPE.setNegative()
+    # print "\t Type: ", globals.SIMILARITY_TYPE.type()
+    # print "Set similarity type to 'Both': "
+    # globals.SIMILARITY_TYPE.setBoth()
+    # print "\t Type: ", globals.SIMILARITY_TYPE.type()
+    # print "SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive():"
+    # print globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive()
+    # print "SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative():"
+    # print globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative()
+    # print "SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():"
+    # print globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both()
+    # print "-----------------------"
 
 if __name__ == '__main__':
     # main()
