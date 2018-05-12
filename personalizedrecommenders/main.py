@@ -583,15 +583,16 @@ def topN_recommendations_hybrid(userID, movies, weight_uucf=0.5, weight_iicf=0.5
     :param N: int number of items to recommend
     :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
     """
-    topn_uucf = topN_recommendations_uucf(userID, movies, N) # returns top-N recommended items with the form ("item id, title, prediction value")
-    topn_iicf = topN_recommendations_iicf(userID, movies, N) # returns top-N recommended items with the form ("item id, title, prediction value")
+    topn_uucf = topN_recommendations_uucf(userID, movies, 1000) # returns top-N recommended items with the form ("item id, title, prediction value")
+    topn_iicf = topN_recommendations_iicf(userID, movies, 1000) # returns top-N recommended items with the form ("item id, title, prediction value")
     # List of tuples with the form: ("item id, title, prediction value for iicf, prediction value for uucf"):
     merge = [(tuple1[0], tuple1[1], tuple1[2], tuple2[2]) for tuple1 in topn_iicf for tuple2 in topn_uucf if tuple1[0]==tuple2[0]]
     topn_hybrid = []
     for tuple in merge:
         prediction_hybrid = tuple[2]*weight_iicf + tuple[3]*weight_uucf
-        topn_hybrid.append((tuple1[0], tuple1[1], prediction_hybrid))
-    return topn_hybrid
+        topn_hybrid.append((tuple[0], tuple[1], prediction_hybrid))
+    topn_hybrid = sorted(topn_hybrid, key=operator.itemgetter(2), reverse=True)
+    return topn_hybrid[0:N]
 
 def main():
     # Load data and parse it:
@@ -609,16 +610,23 @@ def main():
     # Setting some global variables and general information:
     globals.RATINGS_BY_USER = utils.extract_ratings_by_users(ratings_pkl)
     globals.RATINGS_BY_USER_MAP = utils.extract_ratings_by_users_map(ratings_pkl)
-    # globals.RATINGS_X_BY_USERS = utils.extract_ratings_x_by_users(movies_pkl, ratings_pkl)  # TODO: uncomment
-    # globals.MEAN_RATINGS_ITEM = utils.extract_mean_ratings(movies_pkl)  # TODO: uncomment
-    globals.RATINGS_X_BY_USERS = data.load_pickle(RATINGS_X_BY_USERS_PATH)  # load pickle  # TODO: to delete
-    globals.MEAN_RATINGS_ITEM = data.load_pickle(MEAN_RATINGS_ITEM_PATH)  # load pickle  # TODO: to delete
+    globals.RATINGS_X_BY_USERS = utils.extract_ratings_x_by_users(movies_pkl, ratings_pkl)
+    globals.MEAN_RATINGS_ITEM = utils.extract_mean_ratings(movies_pkl)
+    # globals.RATINGS_X_BY_USERS = data.load_pickle(RATINGS_X_BY_USERS_PATH)  # Loading the pickle is faster than calculating it in run-time
+    # globals.MEAN_RATINGS_ITEM = data.load_pickle(MEAN_RATINGS_ITEM_PATH)  # Loading the pickle is faster than calculating it in run-time
     globals.SIMILARITY_TYPE = globals.SimilarityType()
     print "len(RATINGS_BY_USER): ", len(globals.RATINGS_BY_USER)
     print "len(RATINGS_BY_USER_MAP): ", len(globals.RATINGS_BY_USER_MAP)
     print "len(RATINGS_X_BY_USERS): ", len(globals.RATINGS_X_BY_USERS)
     print "len(MEAN_RATINGS_ITEM): ", len(globals.MEAN_RATINGS_ITEM)
     print "SIMILARITY_TYPE.type(): ", globals.SIMILARITY_TYPE.type()
+    # Dump some globals (just for the first time):
+    # data.dump_pickle(globals.RATINGS_X_BY_USERS, data.generate_file_name("RATINGS_X_BY_USERS", "pkl"))
+    # data.dump_pickle(globals.MEAN_RATINGS_ITEM, data.generate_file_name("MEAN_RATINGS_ITEM", "pkl"))
+    # Build IICF model:
+    # build_model_iicf(movies_pkl, ratings_pkl)
+    # Dump the IICF model to pickle into file system (just for the first time):
+    # data.dump_pickle(globals.IICF_MODEL, data.generate_file_name("IICF-model", "pkl"))
 
     # Question 1:
     print "Question 1: Pearson correlation (without significance weighting) user 1 and 4."
@@ -673,14 +681,14 @@ def main():
     print "\t Title = ", movies_pkl['260']['title']
     # Question 16:
     print "Question 16: Top-N recommendations user 1."
-    # topn = topN_recommendations_uucf(1,movies_pkl)
-    # for item in topn:
-    #     print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
+    topn = topN_recommendations_uucf(1,movies_pkl)
+    for item in topn:
+        print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
     # Question 17:
     print "Question 17: Top-N recommendations user 522."
-    # topn = topN_recommendations_uucf(522,movies_pkl)
-    # for item in topn:
-    #     print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
+    topn = topN_recommendations_uucf(522,movies_pkl)
+    for item in topn:
+        print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
     # Question 19:
     print "Question 19: IICF model. Strict positive similarities."
     globals.IICF_MODEL = data.load_pickle(IICF_MODEL_NAME)  # load the IICF model
