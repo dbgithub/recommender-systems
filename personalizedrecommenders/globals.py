@@ -35,13 +35,9 @@ class SimilarityType:
         self.__simtype = "POSITIVE"  # by default, the type for similarities is set to "POSITIVE"
 
     def positive(self):
-        if self.__simtype == "BOTH":  # Being 'both' implies that is also 'positive'
-            return self.both()
         return "POSITIVE"
 
     def negative(self):
-        if self.__simtype == "BOTH":  # Being 'both' implies that is also 'negative'
-            return self.both()
         return "NEGATIVE"
 
     def both(self):

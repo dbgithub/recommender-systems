@@ -14,7 +14,7 @@ import globals  # a file to store global variables to use them across all Python
 
 MOVIE_PICKLE_LOCATION = "movies_pickle_06-05-2018--23-43-45.pkl"
 RATINGS_PICKLE_LOCATION = "ratings_pickle_06-05-2018--23-43-45.pkl"
-# IICF_MODEL_NAME = "IICF-model_pickle_10-05-2018--11-26-46.pkl"
+IICF_MODEL_NAME = "IICF-model_pickle_12-05-2018--01-18-59.pkl"
 RATINGS_X_BY_USERS_PATH = "RATINGS_X_BY_USERS_pickle_10-05-2018--07-00-01.pkl"
 MEAN_RATINGS_ITEM_PATH = "MEAN_RATINGS_ITEM_pickle_10-05-2018--07-00-02.pkl"
 CUT_OFF = 10  # gamma corresponds to the cut-off value of the significance weighting
@@ -179,12 +179,12 @@ def top_k_most_similar_neighbors(userID, itemID, k=20):
         # We are only interested in positive similarity value. If it's negative, we skip it:
         if pearson_value <= 0.0:
             continue
+        # Pearson correlation value needs to be multiplied by significance weighting factor:
+        pearson_value = pearson_value * calculate_significance_weighing_factor(userID, userUid, None, amount)
         # Relevant data of this user will be added to a dictionary for later use outside this method:
         neighbors_data[userUid] = {}
         neighbors_data[userUid]['pearson'] = pearson_value
         neighbors_data[userUid]['ratings_by_user'] = ratings_by_user_U
-        # Pearson correlation value needs to be multiplied by significance weighting factor:
-        pearson_value = pearson_value * calculate_significance_weighing_factor(userID, userUid, None, amount)
         user_pearson_tuples.append((userUid, pearson_value))
         if pearson_value in pearson_userids_dict:
             pearson_userids_dict[pearson_value].append(userUid)
@@ -246,7 +246,6 @@ def topN_recommendations_uucf(userID, movies, N=10):
     rating_predictions = []
     allItems = [int(movie['id']) for movie in movies.values()]  # we retrieve all item IDs
     for movieid in allItems:
-        # print "------------> movie id = ", movieid  # TODO: to delete!
         # Skip item if the user has already consumed that item!
         if movieid in itemids_user:
             continue
@@ -428,7 +427,7 @@ def rating_prediction_item(itemID_i, userID, neighborsIDs=None):
     Calculates the rating prediction for target user 'userID' and target item 'itemID_i'
     :param itemID_i: int number of the item
     :param userID: int number of the user
-    :param neighborsIDs: a list of tuples with the form: ("itemJid", "similarity value") with the top k most similar users
+    :param neighborsIDs: a list of tuples with the form: ("itemJid", "similarity value") with the top k most similar items
     :return: float number
     """
     if globals.RATINGS_BY_USER_MAP is None:
@@ -476,11 +475,11 @@ def top_k_most_similar_items(userID, itemID, k=20):
         return item_similarity_tuples
     # Secondly, we iterate over all positive AND/OR negative similar items of 'itemID' making sure the item was rated by current user:
     # The goal is to find the 'k' most similar items:
-    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive():
+    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():
         for itemid in globals.IICF_MODEL[1][itemID].keys():
             if itemid in itemIDs_rated_by_user:
                 item_similarity_tuples.append((itemid, globals.IICF_MODEL[1][itemID][itemid]))
-    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative():
+    if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():
         for itemid in globals.IICF_MODEL[-1][itemID].keys():
             if itemid in itemIDs_rated_by_user:
                 item_similarity_tuples.append((itemid, globals.IICF_MODEL[-1][itemID][itemid]))
@@ -536,17 +535,37 @@ def topN_recommendations_basket(basket, movies, N=10):
     :param N: int number of items to recommend
     :return: a list containing tuples corresponding to the TOP-N recommended items with the form ("item id, title, prediction value")
     """
+    if globals.SIMILARITY_TYPE is None:
+        raise ValueError("[Error] SIMILARITY_TYPE is none! Cannot continue with the method!")
+    if globals.IICF_MODEL is None:
+        raise ValueError("[Error] IICF_MODEL is none! Cannot continue with the method!")
     score_target_items = []  # a list of tuples with the form ('itemID', 'score')
-    allItems = [int(movie['id']) for movie in movies.values()]  # all item IDs
     if len(basket) == 1:
-        for movieid in allItems:
-            # Skip cosine similarity with itself:
-            if movieid == basket[0]:
-                continue
-            score_target_items.append((movieid, compute_cosine_similarity(movieid, basket[0])))
+        if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():  # POSITIVE similarities (or BOTH)
+            for movieid in globals.IICF_MODEL[1][basket[0]].keys():
+                # Skip cosine similarity with itself:
+                if movieid == basket[0]:
+                    continue
+                score_target_items.append((movieid, globals.IICF_MODEL[1][basket[0]][movieid]))
+        if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():  # NEGATIVE similarities (or BOTH)
+            for movieid in globals.IICF_MODEL[-1][basket[0]].keys():
+                # Skip cosine similarity with itself:
+                if movieid == basket[0]:
+                    continue
+                score_target_items.append((movieid, globals.IICF_MODEL[-1][basket[0]][movieid]))
     elif len(basket) > 1:
+        allItems = [int(movie['id']) for movie in movies.values()]
         for movieid in allItems:
-            score = sum(compute_cosine_similarity(movieid, j) for j in basket if movieid!=j) # Skip cosine similarity with itself:
+            score = 0.0
+            for j in basket:
+                if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.positive() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():  # POSITIVE similarities (or BOTH)
+                    if movieid != j and movieid in globals.IICF_MODEL[1]:  # Skip cosine similarity with itself
+                        if j in globals.IICF_MODEL[1][movieid]:
+                            score = score + globals.IICF_MODEL[1][movieid][j]
+                if globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.negative() or globals.SIMILARITY_TYPE.type() == globals.SIMILARITY_TYPE.both():  # NEGATIVE similarities (or BOTH)
+                    if movieid != j and movieid in globals.IICF_MODEL[-1]:  # Skip cosine similarity with itself
+                        if j in globals.IICF_MODEL[-1][movieid]:
+                            score = score + globals.IICF_MODEL[-1][movieid][j]
             score_target_items.append((movieid, score))
     mysorted = sorted(score_target_items, key=operator.itemgetter(1, 0), reverse=True)  # tuples sorted from BIG to SMALL score value
     topN = []  # final TOP N list
@@ -589,9 +608,131 @@ def main():
 
     # Setting some global variables and general information:
     globals.RATINGS_BY_USER = utils.extract_ratings_by_users(ratings_pkl)
+    globals.RATINGS_BY_USER_MAP = utils.extract_ratings_by_users_map(ratings_pkl)
+    # globals.RATINGS_X_BY_USERS = utils.extract_ratings_x_by_users(movies_pkl, ratings_pkl)  # TODO: uncomment
+    # globals.MEAN_RATINGS_ITEM = utils.extract_mean_ratings(movies_pkl)  # TODO: uncomment
+    globals.RATINGS_X_BY_USERS = data.load_pickle(RATINGS_X_BY_USERS_PATH)  # load pickle  # TODO: to delete
+    globals.MEAN_RATINGS_ITEM = data.load_pickle(MEAN_RATINGS_ITEM_PATH)  # load pickle  # TODO: to delete
+    globals.SIMILARITY_TYPE = globals.SimilarityType()
+    print "len(RATINGS_BY_USER): ", len(globals.RATINGS_BY_USER)
+    print "len(RATINGS_BY_USER_MAP): ", len(globals.RATINGS_BY_USER_MAP)
+    print "len(RATINGS_X_BY_USERS): ", len(globals.RATINGS_X_BY_USERS)
+    print "len(MEAN_RATINGS_ITEM): ", len(globals.MEAN_RATINGS_ITEM)
+    print "SIMILARITY_TYPE.type(): ", globals.SIMILARITY_TYPE.type()
 
-    # # Question 1:
-    # print "Question 1: rating of movie 1125 by user 289."
+    # Question 1:
+    print "Question 1: Pearson correlation (without significance weighting) user 1 and 4."
+    common_ratings, amount = utils.find_common_ratings(1, 4, None)
+    p = calculate_pearson_correlation(common_ratings, 1, 4)
+    print "\t| Result =", p
+    # Question 2:
+    print "Question 2: Pearson correlation (with significance weighting) user 1 and 4."
+    common_ratings, amount = utils.find_common_ratings(1, 4, None)
+    p = calculate_pearson_correlation(common_ratings, 1, 4)
+    result = p * calculate_significance_weighing_factor(1,4,ratings_pkl,amount)
+    print "\t| Result =", result
+    # Question 5:
+    print "Question 5: Amount of neighbors (strict positive similarity) user 1 and item 10."
+    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1,10,1000)
+    print "\t| # of neighbors = ", len(neighborsIDs)
+    # Question 6:
+    print "Question 6: List those neighbors."
+    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 10)
+    for item in neighborsIDs:
+        print "\t| ID: ", item, " | Pearson: ", neighbors_data[item]['pearson']
+    # Question 7:
+    print "Question 7: Weighted average of the deviation from mean rating. Neighbors of user 1 item 10."
+    pre = rating_prediction_user(1,10,neighborsIDs,neighbors_data)
+    print "\t| Result = ", pre
+    # Question 8:
+    print "Question 8: Rating prediction user 1 item 10."
+    pre = rating_prediction_user(1,10,neighborsIDs,neighbors_data)
+    print "\t| Result = ", pre
+    # Question 9:
+    print "Question 9: Title item 10."
+    print "\t Title = ", movies_pkl['10']['title']
+    # Question 10:
+    print "Question 10: Amount of neighbors (strict positive similarity) user 1 and item 260."
+    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1,260,1000)
+    print "\t| # of neighbors = ", len(neighborsIDs)
+    # Question 11:
+    print "Question 11: List those neighbors."
+    neighborsIDs, neighbors_data = top_k_most_similar_neighbors(1, 260)
+    for item in neighborsIDs:
+        print "\t| ID: ", item, " | Pearson: ", neighbors_data[item]['pearson']
+    # Question 12:
+    print "Question 12: Weighted average of the deviation from mean rating. Neighbors of user 1 item 260."
+    pre = rating_prediction_user(1, 260, neighborsIDs, neighbors_data)
+    print "\t| Result = ", pre
+    # Question 13:
+    print "Question 13: Rating prediction user 1 item 260."
+    pre = rating_prediction_user(1, 260, neighborsIDs, neighbors_data)
+    print "\t| Result = ", pre
+    # Question 14:
+    print "Question 14: Title item 260."
+    print "\t Title = ", movies_pkl['260']['title']
+    # Question 16:
+    print "Question 16: Top-N recommendations user 1."
+    # topn = topN_recommendations_uucf(1,movies_pkl)
+    # for item in topn:
+    #     print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
+    # Question 17:
+    print "Question 17: Top-N recommendations user 522."
+    # topn = topN_recommendations_uucf(522,movies_pkl)
+    # for item in topn:
+    #     print "\t| ({0},{1},{2})".format(item[0], item[1], item[2])
+    # Question 19:
+    print "Question 19: IICF model. Strict positive similarities."
+    globals.IICF_MODEL = data.load_pickle(IICF_MODEL_NAME)  # load the IICF model
+    print "\t| Result = ", len(globals.IICF_MODEL[1])
+    # Question 20:
+    print "Question 20: Cosine similarity between items 594 and 596."
+    sim = globals.IICF_MODEL[1][594][596]
+    print "\t| Similarity = ", sim
+    print "\t| Movie 594 =", movies_pkl['594']['title']
+    print "\t| Movie 596 =", movies_pkl['596']['title']
+    # Question 21:
+    print "Question 21: Rating prediction for user 522 and item 25. Similar neighbors rated by user:"
+    globals.SIMILARITY_TYPE.setPositive()
+    result = top_k_most_similar_items(522,25,1000)
+    print "\t| Result = ", len(result)
+    # Question 22:
+    print "Question 22: Top-k similar items for user 522 and item 25."
+    globals.SIMILARITY_TYPE.setPositive()
+    topk = top_k_most_similar_items(522, 25)
+    for item in topk:
+        print "\t| ({0} , {1} , {2})".format(item[0], movies_pkl[str(item[0])]['title'], item[1])
+    # Question 24:
+    print "Question 24: Top-N recommendations for user 522."
+    globals.SIMILARITY_TYPE.setPositive()
+    topn = topN_recommendations_iicf(522, movies_pkl)
+    for item in topn:
+        print "\t| ( {0} , {1}, {2} )".format(item[0], item[1], item[2])
+    # Question 25:
+    print "Question 25: Top-N recommendations basket items: [1]."
+    globals.SIMILARITY_TYPE.setPositive()
+    topn = topN_recommendations_basket([1], movies_pkl)
+    for item in topn:
+        print "\t| ( {0} , {1}, {2} )".format(item[0], item[1], item[2])
+    # Question 26:
+    print "Question 26: Top-N recommendations basket items: [1, 48, 239]."
+    globals.SIMILARITY_TYPE.setPositive()
+    topn = topN_recommendations_basket([1, 48, 239], movies_pkl)
+    for item in topn:
+        print "\t| ( {0} , {1}, {2} )".format(item[0], item[1], item[2])
+    # Question 27:
+    print "Question 27: Top-N recommendations basket items: [1, 48, 239] plus negative similarities."
+    globals.SIMILARITY_TYPE.setBoth()
+    topn = topN_recommendations_basket([1, 48, 239], movies_pkl)
+    for item in topn:
+        print "\t| ( {0} , {1}, {2} )".format(item[0], item[1], item[2])
+    # Question 29:
+    print "Question 29: Top-N recommendations hybrid for user 522."
+    globals.SIMILARITY_TYPE.setPositive()
+    topn = topN_recommendations_hybrid(522,movies_pkl)
+    for item in topn:
+        print "\t| ( {0} , {1}, {2} )".format(item[0], item[1], item[2])
+
 
 
 def test():
@@ -705,5 +846,5 @@ def test():
     # print "-----------------------"
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
